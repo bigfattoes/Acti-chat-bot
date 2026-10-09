@@ -47,7 +47,9 @@ createServer(async (req, res) => {
     res.writeHead(200, { "content-type": "application/json" });
     if (UNKNOWN[0].test(message)) return res.end(JSON.stringify({ reply: UNKNOWN[1], handoff: true }));
     const hit = CANNED.find(([re]) => re.test(message));
-    return res.end(JSON.stringify(hit ? { reply: hit[1], handoff: false } : { reply: REFUSAL, handoff: false, refused: true }));
+    if (!hit) return res.end(JSON.stringify({ reply: REFUSAL, handoff: false, refused: true }));
+    const topic = /partner|sponsor|brand|booth/i.test(message) ? "partner" : /ambassador/i.test(message) ? "ambassador" : /regist/i.test(message) ? "register" : null;
+    return res.end(JSON.stringify(topic ? { reply: hit[1], handoff: true, topic } : { reply: hit[1], handoff: false }));
   }
 
   if (url.pathname === "/handoff-config") {
