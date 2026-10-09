@@ -82,8 +82,10 @@ arrive in Utter with the same #tags.
 ## WhatsApp handoff (Utter)
 
 - The panel has a permanent **"Chat with our team on WhatsApp"** button.
-- When Acti doesn't know an answer (or the AI is down), it offers the handoff automatically.
-  It doesn't offer it on off-topic refusals.
+- Acti offers the handoff automatically when it doesn't know an answer, when the AI is down, and
+  on questions where the next step is the team: partnering/sponsoring, becoming an ambassador,
+  registering, or asking for a person (English and Arabic). The matching Utter button
+  (e.g. "Become our Partner") is shown first. It's never offered on off-topic refusals.
 - The topic buttons are **Utter's own CTAs**. The worker reads them, plus the WhatsApp number,
   from Utter's widget config (`GET /handoff-config`, cached for 1 hour). To change a button,
   tag or number, edit it in the Utter dashboard; Acti picks it up within an hour. If Utter is
