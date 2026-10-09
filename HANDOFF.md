@@ -40,7 +40,7 @@ README.md               dev-facing deploy/embed/limits guide
 - **Limits:** messages max 500 chars, max 350 reply tokens, temperature 0.2.
 - **Refusals:** off-topic questions get an exact `REFUSAL` sentence. On AI errors or when the quota
   is used up, the bot returns `FALLBACK` (WhatsApp + email).
-- **Origins:** `ALLOWED_ORIGINS` = `https://www.activatemefest.com,https://activatemefest.com`. The
+- **Origins:** `ALLOWED_ORIGINS` = `https://www.activatemefest.com,https://activatemefest.com,https://activateme.dev.mwancloud.com` (the last is the devs' staging site). The
   worker's own origin (demo page) is always allowed. Other origins get a 403.
 - **Free tier:** about 10k neurons/day, roughly 70–100 questions/day with the 70B model.
 - **Widget config:** `data-endpoint`, `data-bot-name` (default "Acti"), `data-position`,
