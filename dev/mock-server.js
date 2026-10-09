@@ -20,6 +20,20 @@ const CANNED = [
   [/partner|sponsor|brand|booth/i, "Brands can join as a **Title Sponsor**, sponsor an event (like a fun run or sports clinic), run an **interactive booth**, or support **community programs**. Contact Stefanie Martin at stefanie@mwanevents.com."],
   [/^(hi|hello|hey|thanks|thank you)\b/i, "Hi there, I'm Acti! Ask me anything about ActivateMe® Fest."],
 ];
+// Festival questions the knowledge base can't answer → "don't have that detail" + WhatsApp handoff.
+const UNKNOWN = [/line-?up|confirmed|ajax|wheelchair|lost|talk to|human|person|team|whatsapp/i,
+  "I don't have that detail yet. Our team can help you on WhatsApp or at info@mwanevents.com."];
+const HANDOFF_CONFIG = {
+  phone: "971524586156",
+  title: "Welcome To ActivateMe® Support!",
+  ctas: [
+    { text: "How do I register", tag: "general" },
+    { text: "Become our Ambassador", tag: "Speaker" },
+    { text: "Become our Partner", tag: "partner" },
+    { text: "Anything else", tag: "general" },
+  ],
+  source: "default",
+};
 const REFUSAL = "Sorry, I can only help with questions about ActivateMe® Fest and MWAN Events. Is there anything about the festival I can help you with?";
 
 createServer(async (req, res) => {
@@ -29,10 +43,16 @@ createServer(async (req, res) => {
     let raw = "";
     for await (const chunk of req) raw += chunk;
     const message = (JSON.parse(raw || "{}").message || "").toString();
-    const hit = CANNED.find(([re]) => re.test(message));
     await new Promise((r) => setTimeout(r, 700));
     res.writeHead(200, { "content-type": "application/json" });
-    return res.end(JSON.stringify({ reply: hit ? hit[1] : REFUSAL }));
+    if (UNKNOWN[0].test(message)) return res.end(JSON.stringify({ reply: UNKNOWN[1], handoff: true }));
+    const hit = CANNED.find(([re]) => re.test(message));
+    return res.end(JSON.stringify(hit ? { reply: hit[1], handoff: false } : { reply: REFUSAL, handoff: false, refused: true }));
+  }
+
+  if (url.pathname === "/handoff-config") {
+    res.writeHead(200, { "content-type": "application/json" });
+    return res.end(JSON.stringify(HANDOFF_CONFIG));
   }
 
   const path = url.pathname === "/" ? "/demo.html" : url.pathname;
