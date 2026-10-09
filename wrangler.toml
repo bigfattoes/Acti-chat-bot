@@ -16,6 +16,13 @@ fallthrough = true
 [ai]
 binding = "AI"
 
+# Per-visitor rate limit on /chat (free, built into Workers): 10 messages a minute per IP.
+# A person chatting never hits it; a script hammering the bot gets cut off before it eats the daily AI quota.
+[[ratelimits]]
+name = "CHAT_LIMITER"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
+
 [vars]
 # "workers-ai" (default, no extra account) or "gemini" (needs: npx wrangler secret put GEMINI_API_KEY)
 PROVIDER = "workers-ai"
