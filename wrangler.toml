@@ -29,7 +29,7 @@ PROVIDER = "workers-ai"
 MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 GEMINI_MODEL = "gemini-2.5-flash"
 # Comma-separated sites allowed to call /chat from a browser.
-ALLOWED_ORIGINS = "https://www.activatemefest.com,https://activatemefest.com"
+ALLOWED_ORIGINS = "https://www.activatemefest.com,https://activatemefest.com,https://activateme.dev.mwancloud.com"
 # Utter (utterchat.ai) widget IDs the worker may fetch WhatsApp handoff config for (GET /handoff-config).
 # ActivateMe, mwanevents.com, mwanmobile.com.
 UTTER_WIDGET_IDS = "695222f369041029ef96ba3a,66d9a6743280355ad15f0f23,6a26757462a89e993ebaeac6"
@@ -41,7 +41,7 @@ UTTER_WIDGET_IDS = "695222f369041029ef96ba3a,66d9a6743280355ad15f0f23,6a26757462
 PROVIDER = "workers-ai"
 MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 GEMINI_MODEL = "gemini-2.5-flash"
-ALLOWED_ORIGINS = "https://www.activatemefest.com,https://activatemefest.com"
+ALLOWED_ORIGINS = "https://www.activatemefest.com,https://activatemefest.com,https://activateme.dev.mwancloud.com"
 UTTER_WIDGET_IDS = "695222f369041029ef96ba3a,66d9a6743280355ad15f0f23,6a26757462a89e993ebaeac6"
 
 [previews.ai]
