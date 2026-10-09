@@ -1,7 +1,7 @@
 // ActivateMe® Fest assistant — Cloudflare Worker.
 //
 // POST /chat  { message: string, history?: [{ role: "user"|"assistant", content: string }] }
-//          -> { reply: string, handoff: boolean, refused?: true }
+//          -> { reply: string, handoff: boolean, topic?: "partner"|"ambassador"|"register"|"team", refused?: true }
 // GET  /handoff-config?id=<Utter widget id>
 //          -> { phone, title, ctas: [{ text, tag, phone }], source: "utter"|"default" }
 // Static files in /public (the widget + demo page) are served by Workers Assets before this runs.
@@ -42,6 +42,15 @@ const DEFAULT_HANDOFF = {
     ],
   },
 };
+
+// Questions where the real next step is talking to the team, so WhatsApp is offered even when Acti
+// knows the answer. The widget puts the matching Utter button first. English + Arabic.
+const HANDOFF_TOPICS = [
+  ["partner", /\b(?:partner|sponsor|exhibit|booth|vendor|stall)|\b(?:my|our) (?:brand|company|business)\b|شراك|شريك|رعاي|راعي|عارض/i],
+  ["ambassador", /\b(?:ambassador|speaker|influencer|content creator|volunteer)|سفير|متحدث|تطوع/i],
+  ["register", /\b(?:register|registration|sign(?:ing)? up|enrol)|تسجيل|سجل/i],
+  ["team", /\b(?:talk|speak|chat) (?:to|with) (?:a |the |your |someone|somebody|human|person|team|agent)|\b(?:real|human) (?:person|agent)|\bwhatsapp\b|واتساب|موظف/i],
+];
 
 const FALLBACK =
   "I'm having trouble answering right now. You can reach the team on WhatsApp at " +
@@ -118,7 +127,10 @@ export default {
 
     try {
       const raw = env.PROVIDER === "gemini" ? await askGemini(env, messages) : await askWorkersAI(env, messages);
-      return json(parseReply(raw), 200, cors);
+      const result = parseReply(raw);
+      const topic = result.refused ? null : detectTopic(message);
+      if (topic) Object.assign(result, { handoff: true, topic });
+      return json(result, 200, cors);
     } catch (err) {
       // Most common cause: the free daily quota is used up. Fail politely, never with a stack trace.
       console.error("AI call failed:", err?.message || err);
@@ -151,6 +163,11 @@ function parseReply(raw) {
   // Safety net for when the model forgets the marker but clearly says it doesn't know.
   const unknown = /\b(?:don't|do not|doesn't|does not)\s+have\s+(?:that|this|the|those|these|any|specific)\b[^.]*\b(?:detail|details|information|info)\b/i.test(clean);
   return { reply: clean, handoff: marked || unknown };
+}
+
+function detectTopic(message) {
+  const hit = HANDOFF_TOPICS.find(([, re]) => re.test(message));
+  return hit ? hit[0] : null;
 }
 
 // Safety net in case the model still talks about its "knowledge base" to visitors.
