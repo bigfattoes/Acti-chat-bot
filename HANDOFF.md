@@ -132,7 +132,7 @@ activatemefest.com, mwanevents.com and mwanmobile.com.
   - the page's JSON-LD: 10:00–20:00
   
   `knowledge.md` uses the FAQ times; Aseel asked Svetlana and Andreas to confirm.
-- **Rate limiting:** recommend a Cloudflare rate-limit rule on `/chat` (e.g. 20/min/IP).
+- **Rate limiting:** done, via the `CHAT_LIMITER` binding in `wrangler.toml` (10/min/IP on `/chat`).
 - **Commits:** ask Aseel which author name and email to use before committing.
 - **Contacts:** Svetlana Efimova (CEO / Festival Director) svetlana@mwanevents.com ·
   Andreas Tsindos (CDO) andreas.tsindos@mwanmobile.com · general: info@mwanevents.com,
