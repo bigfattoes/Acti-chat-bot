@@ -145,6 +145,7 @@
     ".handoff .opts{display:flex;flex-wrap:wrap;gap:8px}",
     ".wa-opt{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 12px;font-size:13.5px;font-weight:600;text-decoration:none;color:#fff;background:#1DA851}",
     ".wa-opt:hover{background:#128C3F}",
+    ".wa-opt.match{box-shadow:0 0 0 3px #BFEFD0}",
     ".wa-opt:focus-visible{outline:3px solid #EE6A1A;outline-offset:2px}",
     ".note{font-size:11.5px;color:#7a7484;text-align:center;margin-top:6px}",
     ".reset-btn{background:none;border:0;padding:0;margin-left:4px;font-size:11.5px;color:#6F23B0;font-weight:600;text-decoration:underline;cursor:pointer}",
@@ -288,8 +289,21 @@
     return "https://api.whatsapp.com/send?phone=" + phone + "&text=" + encodeURIComponent(whatsappText(cta));
   }
 
+  // Which Utter button fits the visitor's question (matched on the CTA's tag or label).
+  var TOPIC_MATCH = { partner: /partner|sponsor/i, ambassador: /ambassador|speaker/i, register: /regist/i };
+  function orderedCtas(topic) {
+    var ctas = handoff.ctas && handoff.ctas.length ? handoff.ctas.slice() : [{ text: "Chat with our team", tag: "general" }];
+    var re = TOPIC_MATCH[topic];
+    if (!re) return ctas;
+    var i = -1;
+    for (var k = 0; k < ctas.length; k++) if (re.test(ctas[k].tag + " " + ctas[k].text)) { i = k; break; }
+    if (i > 0) ctas.unshift(ctas.splice(i, 1)[0]);
+    if (i >= 0) ctas[0] = Object.assign({}, ctas[0], { match: true });
+    return ctas;
+  }
+
   // A card under the conversation with Utter's CTA buttons. Only the latest card is kept.
-  function showHandoff(intro) {
+  function showHandoff(intro, topic) {
     loadHandoff();
     var old = log.querySelectorAll(".handoff");
     for (var i = 0; i < old.length; i++) old[i].remove();
@@ -303,10 +317,9 @@
     card.appendChild(opts);
     function fill() {
       opts.innerHTML = "";
-      var ctas = handoff.ctas && handoff.ctas.length ? handoff.ctas : [{ text: "Chat with our team", tag: "general" }];
-      ctas.forEach(function (cta) {
+      orderedCtas(topic).forEach(function (cta) {
         var a = document.createElement("a");
-        a.className = "wa-opt";
+        a.className = "wa-opt" + (cta.match ? " match" : "");
         a.target = "_blank";
         a.rel = "noopener";
         a.innerHTML = ICON.whatsapp + "<span></span>";
@@ -323,6 +336,9 @@
     log.scrollTop = log.scrollHeight;
     return card;
   }
+  function handoffIntro(topic) {
+    return topic && topic !== "team" ? "Our team can help with this on WhatsApp:" : "Want to ask our team directly?";
+  }
   function refreshHandoffCards() {
     var cards = log.querySelectorAll(".handoff");
     for (var i = 0; i < cards.length; i++) if (cards[i]._refill) cards[i]._refill();
@@ -333,7 +349,7 @@
     addBubble("bot", CONFIG.greeting);
     state.history.forEach(function (m) { addBubble(m.role, m.content); });
     var last = state.history[state.history.length - 1];
-    if (last && last.role === "assistant" && last.handoff) showHandoff("Want to ask our team directly?");
+    if (last && last.role === "assistant" && last.handoff) showHandoff(handoffIntro(last.topic), last.topic);
     renderChips();
   }
 
@@ -386,7 +402,7 @@
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (data) {
         return data && data.reply
-          ? { reply: data.reply, handoff: data.handoff === true, refused: data.refused === true }
+          ? { reply: data.reply, handoff: data.handoff === true, topic: typeof data.topic === "string" ? data.topic : null, refused: data.refused === true }
           : { reply: "Sorry, something went wrong. Please try again, or contact info@mwanevents.com.", handoff: true };
       })
       .catch(function () {
@@ -397,9 +413,10 @@
         var entry = { role: "assistant", content: res.reply };
         if (res.handoff) entry.handoff = true;
         if (res.refused) entry.refused = true;
+        if (res.topic) entry.topic = res.topic;
         state.history.push(entry);
         addBubble("assistant", res.reply);
-        if (res.handoff) showHandoff("Want to ask our team directly?");
+        if (res.handoff) showHandoff(handoffIntro(res.topic), res.topic);
         persist();
         state.busy = false;
         updateSend();
