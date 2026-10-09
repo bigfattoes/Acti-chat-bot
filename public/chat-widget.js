@@ -10,6 +10,8 @@
  *   data-position   "right" (default) or "left"
  *   data-avatar     Image URL for the bot avatar (default: Acti, served next to this script)
  *   data-open       "true" to open the panel on page load
+ *   data-utter-widget-id  Utter (utterchat.ai) widget whose WhatsApp number, CTA buttons and #tags
+ *                         power the "Chat with our team on WhatsApp" handoff (default: ActivateMe)
  */
 (function () {
   "use strict";
@@ -23,8 +25,11 @@
   };
   var scriptOrigin = script && script.src ? new URL(script.src, location.href).origin : location.origin;
 
+  var endpoint = attr("endpoint", scriptOrigin + "/chat");
   var CONFIG = {
-    endpoint: attr("endpoint", scriptOrigin + "/chat"),
+    endpoint: endpoint,
+    handoffConfigUrl: attr("handoff-config", endpoint.replace(/\/chat\/?$/, "") + "/handoff-config"),
+    utterWidgetId: attr("utter-widget-id", "695222f369041029ef96ba3a"),
     botName: attr("bot-name", "Acti"),
     position: attr("position", "right") === "left" ? "left" : "right",
     avatar: attr("avatar", scriptOrigin + "/acti.jpg"),
@@ -36,6 +41,32 @@
 
   var STORE_KEY = "activateme-chat-v1";
   var MAX_CHARS = 500;
+
+  // Used until (or if) the worker's /handoff-config answers. Mirrors Utter's ActivateMe setup.
+  var DEFAULT_HANDOFF = {
+    phone: "971524586156",
+    ctas: [
+      { text: "How do I register", tag: "general" },
+      { text: "Become our Ambassador", tag: "Speaker" },
+      { text: "Become our Partner", tag: "partner" },
+      { text: "Anything else", tag: "general" },
+    ],
+  };
+  var handoff = DEFAULT_HANDOFF;
+  var handoffLoaded = false;
+  function loadHandoff() {
+    if (handoffLoaded) return;
+    handoffLoaded = true;
+    fetch(CONFIG.handoffConfigUrl + "?id=" + encodeURIComponent(CONFIG.utterWidgetId))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (c) {
+        if (c && c.phone) {
+          handoff = { phone: c.phone, ctas: Array.isArray(c.ctas) ? c.ctas : [] };
+          if (typeof refreshHandoffCards === "function") refreshHandoffCards();
+        }
+      })
+      .catch(function () {});
+  }
 
   // ---------- state ----------
   var state = { open: false, expanded: false, busy: false, history: [] };
@@ -55,6 +86,7 @@
     close: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     expand: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>',
     shrink: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M10 14l-7 7M14 10l7-7"/></svg>',
+    whatsapp: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.2-.2-.5-.3z"/></svg>',
     send: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>',
   };
   var BADGE =
@@ -106,6 +138,14 @@
     "textarea:focus{border-color:#6F23B0;outline:none}",
     ".send{width:44px;height:44px;border-radius:50%;border:0;cursor:pointer;color:#fff;background:#EE6A1A;display:grid;place-items:center;flex:none}",
     ".send:disabled{background:#CFC9D6;cursor:not-allowed}",
+    ".wa-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 0 8px;padding:8px 12px;border:1.5px solid #25D366;border-radius:12px;background:#F0FBF4;color:#0B7A3B;font-size:13.5px;font-weight:600;cursor:pointer}",
+    ".wa-btn:hover{background:#25D366;color:#fff}",
+    ".handoff{margin:-4px 0 0 42px;padding:12px;border:1.5px solid #CDEFD9;border-radius:14px;background:#F6FDF8}",
+    ".handoff p{margin:0 0 8px;font-size:13.5px;color:#1d1d24;font-weight:600}",
+    ".handoff .opts{display:flex;flex-wrap:wrap;gap:8px}",
+    ".wa-opt{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 12px;font-size:13.5px;font-weight:600;text-decoration:none;color:#fff;background:#1DA851}",
+    ".wa-opt:hover{background:#128C3F}",
+    ".wa-opt:focus-visible{outline:3px solid #EE6A1A;outline-offset:2px}",
     ".note{font-size:11.5px;color:#7a7484;text-align:center;margin-top:6px}",
     ".reset-btn{background:none;border:0;padding:0;margin-left:4px;font-size:11.5px;color:#6F23B0;font-weight:600;text-decoration:underline;cursor:pointer}",
     "@media (max-width:480px){.wrap{bottom:14px;" + CONFIG.position + ":14px}.panel.open{position:fixed;inset:0;width:100vw;height:100%;max-height:none;border-radius:0}.panel.open~.launcher{display:none}.expand-btn{display:none}}",
@@ -130,7 +170,9 @@
     "</header>" +
     '<div class="log" aria-live="polite"></div>' +
     '<div class="chips"></div>' +
-    '<div class="foot"><form class="compose">' +
+    '<div class="foot">' +
+    '<button class="wa-btn" type="button">' + ICON.whatsapp + "<span>Chat with our team on WhatsApp</span></button>" +
+    '<form class="compose">' +
     '<textarea rows="1" maxlength="' + MAX_CHARS + '" placeholder="Ask Acti about the festival…" aria-label="Your question"></textarea>' +
     '<button class="send" type="submit" aria-label="Send">' + ICON.send + "</button>" +
     "</form>" +
@@ -218,10 +260,80 @@
     });
   }
 
+  // ---------- WhatsApp handoff (Utter) ----------
+  // Pre-fills WhatsApp with the visitor's last questions to Acti so the team doesn't start from zero.
+  // Questions are trimmed and scrubbed of anything that looks like an email or phone number.
+  function scrub(q) {
+    q = String(q).replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "[email]").replace(/\+?\d[\d\s().-]{6,}\d/g, "[number]");
+    q = q.replace(/\s+/g, " ").replace(/"/g, "'").trim();
+    return q.length > 120 ? q.slice(0, 117).trim() + "…" : q;
+  }
+  function whatsappText(cta) {
+    // Skip questions Acti refused as off-topic — the team only needs the festival ones.
+    var asked = state.history
+      .filter(function (m, i) {
+        var next = state.history[i + 1];
+        return m.role === "user" && !(next && next.refused);
+      })
+      .slice(-2)
+      .map(function (m) { return '"' + scrub(m.content) + '"'; });
+    var lines = ["Hello Support Team,"];
+    if (cta && cta.text) lines.push("I would like to know: " + cta.text);
+    if (asked.length) lines.push("I was chatting with Acti on the website and asked: " + asked.join(" and "));
+    lines.push("#" + ((cta && cta.tag) || "general"));
+    return lines.join("\n");
+  }
+  function whatsappLink(cta) {
+    var phone = String((cta && cta.phone) || handoff.phone).replace(/\D/g, "");
+    return "https://api.whatsapp.com/send?phone=" + phone + "&text=" + encodeURIComponent(whatsappText(cta));
+  }
+
+  // A card under the conversation with Utter's CTA buttons. Only the latest card is kept.
+  function showHandoff(intro) {
+    loadHandoff();
+    var old = log.querySelectorAll(".handoff");
+    for (var i = 0; i < old.length; i++) old[i].remove();
+    var card = document.createElement("div");
+    card.className = "handoff";
+    var p = document.createElement("p");
+    p.textContent = intro || "Our team can help on WhatsApp. Pick a topic:";
+    var opts = document.createElement("div");
+    opts.className = "opts";
+    card.appendChild(p);
+    card.appendChild(opts);
+    function fill() {
+      opts.innerHTML = "";
+      var ctas = handoff.ctas && handoff.ctas.length ? handoff.ctas : [{ text: "Chat with our team", tag: "general" }];
+      ctas.forEach(function (cta) {
+        var a = document.createElement("a");
+        a.className = "wa-opt";
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.innerHTML = ICON.whatsapp + "<span></span>";
+        a.querySelector("span").textContent = cta.text;
+        // Built on click so the message always includes the latest questions.
+        a.href = whatsappLink(cta);
+        a.addEventListener("click", function () { a.href = whatsappLink(cta); });
+        opts.appendChild(a);
+      });
+    }
+    fill();
+    card._refill = fill;
+    log.appendChild(card);
+    log.scrollTop = log.scrollHeight;
+    return card;
+  }
+  function refreshHandoffCards() {
+    var cards = log.querySelectorAll(".handoff");
+    for (var i = 0; i < cards.length; i++) if (cards[i]._refill) cards[i]._refill();
+  }
+
   function renderAll() {
     log.innerHTML = "";
     addBubble("bot", CONFIG.greeting);
     state.history.forEach(function (m) { addBubble(m.role, m.content); });
+    var last = state.history[state.history.length - 1];
+    if (last && last.role === "assistant" && last.handoff) showHandoff("Want to ask our team directly?");
     renderChips();
   }
 
@@ -231,7 +343,10 @@
     panel.classList.toggle("open", open);
     launcher.innerHTML = open ? ICON.close : avatarHTML;
     launcher.setAttribute("aria-label", open ? "Close chat" : "Chat with Acti, the ActivateMe® assistant");
-    if (open) setTimeout(function () { input.focus(); }, 50);
+    if (open) {
+      loadHandoff();
+      setTimeout(function () { input.focus(); }, 50);
+    }
   }
 
   function setExpanded(expanded) {
@@ -253,7 +368,7 @@
   function send(text) {
     text = (text || "").trim().slice(0, MAX_CHARS);
     if (!text || state.busy) return;
-    var prior = state.history.slice(-6);
+    var prior = state.history.slice(-6).map(function (m) { return { role: m.role, content: m.content }; });
     state.history.push({ role: "user", content: text });
     addBubble("user", text);
     chips.innerHTML = "";
@@ -270,15 +385,21 @@
     })
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (data) {
-        return data && data.reply ? data.reply : "Sorry, something went wrong. Please try again, or contact info@mwanevents.com.";
+        return data && data.reply
+          ? { reply: data.reply, handoff: data.handoff === true, refused: data.refused === true }
+          : { reply: "Sorry, something went wrong. Please try again, or contact info@mwanevents.com.", handoff: true };
       })
       .catch(function () {
-        return "I can't connect right now. Please check your connection, or reach the team on WhatsApp at +971 52 458 6156.";
+        return { reply: "I can't connect right now. Please check your connection, or reach the team on WhatsApp.", handoff: true };
       })
-      .then(function (reply) {
+      .then(function (res) {
         typing.remove();
-        state.history.push({ role: "assistant", content: reply });
-        addBubble("assistant", reply);
+        var entry = { role: "assistant", content: res.reply };
+        if (res.handoff) entry.handoff = true;
+        if (res.refused) entry.refused = true;
+        state.history.push(entry);
+        addBubble("assistant", res.reply);
+        if (res.handoff) showHandoff("Want to ask our team directly?");
         persist();
         state.busy = false;
         updateSend();
@@ -287,6 +408,7 @@
   }
 
   launcher.addEventListener("click", function () { setOpen(!state.open); });
+  $(".wa-btn").addEventListener("click", function () { showHandoff(); });
   $(".close-btn").addEventListener("click", function () { setOpen(false); launcher.focus(); });
   expandBtn.addEventListener("click", function () { setExpanded(!state.expanded); });
   $(".reset-btn").addEventListener("click", function () {

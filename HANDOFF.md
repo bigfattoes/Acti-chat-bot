@@ -55,7 +55,14 @@ README.md               dev-facing deploy/embed/limits guide
 - Off-topic questions and jailbreaks get the refusal.
 - A request from a foreign origin returns 403.
 
-## Your task: integrate Acti with Utter (options 1 + 2, already approved)
+## Status (2026-10-09)
+Options 1 + 2 are **built** (worker `[HANDOFF]` marker + `GET /handoff-config`, widget WhatsApp
+button + Utter CTA card + prefilled questions) and tested against stubs and the mock server.
+Not yet verified against the live Utter API: the cloud session couldn't reach `*.utterchat.ai`.
+After deploying, check `/handoff-config` shows `"source": "utter"` and that the CTA tags match
+Utter's (the worker uses `tag.tagKey`, falling back to `tag.title`).
+
+## Original task: integrate Acti with Utter (options 1 + 2, already approved)
 
 **Utter** (utterchat.ai) is **MWAN's own product**: its servers run on MWAN's systems
 (`*.mwancloud.com`), and Andreas Tsindos (CDO, who runs MWAN Mobile) wants Acti integrated with
