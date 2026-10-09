@@ -1,0 +1,13 @@
+{
+  "name": "activateme-assistant",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "preview:mock": "node dev/mock-server.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

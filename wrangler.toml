@@ -1,0 +1,25 @@
+name = "activateme-assistant"
+main = "src/worker.js"
+compatibility_date = "2026-09-01"
+
+# Serves public/chat-widget.js and public/demo.html for free from Cloudflare's edge.
+[assets]
+directory = "./public"
+
+# Lets the worker import knowledge.md as a plain string.
+[[rules]]
+type = "Text"
+globs = ["**/*.md"]
+fallthrough = true
+
+# Cloudflare Workers AI — free daily allowance, no API key needed.
+[ai]
+binding = "AI"
+
+[vars]
+# "workers-ai" (default, no extra account) or "gemini" (needs: npx wrangler secret put GEMINI_API_KEY)
+PROVIDER = "workers-ai"
+MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+GEMINI_MODEL = "gemini-2.5-flash"
+# Comma-separated sites allowed to call /chat from a browser.
+ALLOWED_ORIGINS = "https://www.activatemefest.com,https://activatemefest.com"
