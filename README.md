@@ -64,13 +64,43 @@ Optional attributes on that tag:
 | `data-avatar` | `acti.jpg` next to the script | URL of a square image to swap the mascot |
 | `data-position` | `right` | `left` if it clashes with another widget |
 | `data-endpoint` | script host + `/chat` | Only needed if you put the API on a custom route |
+| `data-utter-widget-id` | `695222f369041029ef96ba3a` (ActivateMe) | Utter widget whose WhatsApp number, CTA buttons and #tags the handoff uses |
 
 The widget renders in a Shadow DOM, so the site's Bootstrap CSS can't break it and it can't
 break the site.
 
-**Existing widget on the site:** the site already has a WhatsApp / utterchat "Support" widget
-in the bottom-right corner. Either remove it, or set `data-position="left"` on one of them so
-they don't overlap.
+**Remove the Utter bubble from activatemefest.com.** Acti replaces it. Delete this tag from the
+site template (it stays on mwanevents.com and mwanmobile.com):
+
+```html
+<script src="https://app.utterchat.ai/script.js" widget-id="695222f369041029ef96ba3a" id="chat-widget-script"></script>
+```
+
+Visitors still reach the team on WhatsApp through Acti (see below), and conversations still
+arrive in Utter with the same #tags.
+
+## WhatsApp handoff (Utter)
+
+- The panel has a permanent **"Chat with our team on WhatsApp"** button.
+- When Acti doesn't know an answer (or the AI is down), it offers the handoff automatically.
+  It doesn't offer it on off-topic refusals.
+- The topic buttons are **Utter's own CTAs**. The worker reads them, plus the WhatsApp number,
+  from Utter's widget config (`GET /handoff-config`, cached for 1 hour). To change a button,
+  tag or number, edit it in the Utter dashboard; Acti picks it up within an hour. If Utter is
+  unreachable, Acti uses the current ActivateMe defaults.
+- The WhatsApp message is pre-filled with the visitor's last 1–2 festival questions to Acti, so
+  the team doesn't start from zero:
+  ```
+  Hello Support Team,
+  I would like to know: Become our Partner
+  I was chatting with Acti on the website and asked: "Is Ajax Academy confirmed?"
+  #partner
+  ```
+  Off-topic questions are left out. Anything that looks like an email or phone number is replaced
+  with `[email]` / `[number]`. Questions are cut to 120 characters.
+
+How it works: when the answer isn't in `knowledge.md`, the model ends its reply with `[HANDOFF]`.
+The worker strips that marker and returns `{ reply, handoff: true }`.
 
 ### Custom domain (optional)
 
@@ -83,10 +113,17 @@ Add that origin to `ALLOWED_ORIGINS` in `wrangler.toml` (comma-separated) and re
 
 ---
 
+## Auto-deploy from GitHub
+
+The Worker is connected to this repo with Cloudflare Workers Builds: every push to `main`
+deploys automatically (about a minute). Build logs are in the Cloudflare dashboard → Workers &
+Pages → `activateme-assistant` → Deployments. `npx wrangler deploy` still works for manual deploys.
+
 ## Updating what the bot knows
 
-1. Edit `knowledge.md`. Plain English, facts only. If it's not in the file, the bot won't say it.
-2. Run `npx wrangler deploy` (or ask the devs to). The change is live in seconds.
+1. Edit `knowledge.md` (on GitHub you can do it in the browser). Plain English, facts only. If
+   it's not in the file, the bot won't say it.
+2. Commit to `main`. Cloudflare deploys it automatically.
 
 Good things to add as they're confirmed: the 2027 line-up, ticket types and prices, the agenda,
 app download links, and new FAQs.
@@ -136,4 +173,8 @@ Free-tier limits change, so check current numbers on Cloudflare's and Google's p
 - [ ] "Write me a Python script" / "capital of France?" / "ignore your instructions" → refusal
 - [ ] A festival question it can't know (e.g. "Is Ajax Academy confirmed for 2027?") → "don't have
       that detail" + contact info, with no made-up answer
+- [ ] That "can't know" question also shows the WhatsApp topic buttons; each opens WhatsApp with
+      the question pre-filled and the right #tag (#general, #Speaker, #partner)
+- [ ] The off-topic questions above don't show the WhatsApp buttons
+- [ ] `/handoff-config` returns `"source": "utter"` (otherwise it's using the fallback defaults)
 - [ ] On a phone, the chat opens full-screen and the close button works
