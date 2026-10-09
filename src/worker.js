@@ -52,6 +52,8 @@ const HANDOFF_TOPICS = [
   ["team", /\b(?:talk|speak|chat) (?:to|with) (?:a |the |your |someone|somebody|human|person|team|agent)|\b(?:real|human) (?:person|agent)|\bwhatsapp\b|واتساب|موظف/i],
 ];
 
+const SLOW_DOWN = "You're sending messages a bit fast. Please wait a minute and try again.";
+
 const FALLBACK =
   "I'm having trouble answering right now. You can reach the team on WhatsApp at " +
   "+971 52 458 6156 or email info@mwanevents.com.";
@@ -104,6 +106,13 @@ export default {
     }
     if (!cors) {
       return json({ error: "Origin not allowed" }, 403);
+    }
+
+    // Rate limit per visitor IP. Skipped if the binding isn't configured (e.g. local tools).
+    if (env.CHAT_LIMITER) {
+      const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+      const { success } = await env.CHAT_LIMITER.limit({ key: ip });
+      if (!success) return json({ reply: SLOW_DOWN, handoff: false }, 429, cors);
     }
 
     let body;

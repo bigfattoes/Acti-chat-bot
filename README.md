@@ -153,8 +153,10 @@ If you need more free volume, you have two options:
 
 Free-tier limits change, so check current numbers on Cloudflare's and Google's pricing pages.
 
-**Abuse protection (recommended):** in the Cloudflare dashboard, add a rate-limiting rule on
-`/chat` (for example 20 requests per minute per IP). The free plan includes one rule.
+**Abuse protection:** `/chat` is rate-limited to 10 messages a minute per visitor IP, using the
+Workers rate-limiting binding (`[[ratelimits]]` in `wrangler.toml`). It's free and needs no dashboard
+setup. Past the limit, the visitor sees "please wait a minute" instead of an AI answer. (WAF rate-limiting
+rules in the dashboard only apply to your own domains, not `workers.dev`.)
 
 ---
 
