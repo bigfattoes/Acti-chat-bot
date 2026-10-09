@@ -33,3 +33,21 @@ ALLOWED_ORIGINS = "https://www.activatemefest.com,https://activatemefest.com"
 # Utter (utterchat.ai) widget IDs the worker may fetch WhatsApp handoff config for (GET /handoff-config).
 # ActivateMe, mwanevents.com, mwanmobile.com.
 UTTER_WIDGET_IDS = "695222f369041029ef96ba3a,66d9a6743280355ad15f0f23,6a26757462a89e993ebaeac6"
+
+# Settings for Preview builds (pushes to branches other than main). Same as production, but with
+# its own rate-limit counter. Each preview gets its own URL, and its demo page works there.
+[previews]
+[previews.vars]
+PROVIDER = "workers-ai"
+MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+GEMINI_MODEL = "gemini-2.5-flash"
+ALLOWED_ORIGINS = "https://www.activatemefest.com,https://activatemefest.com"
+UTTER_WIDGET_IDS = "695222f369041029ef96ba3a,66d9a6743280355ad15f0f23,6a26757462a89e993ebaeac6"
+
+[previews.ai]
+binding = "AI"
+
+[[previews.ratelimits]]
+name = "CHAT_LIMITER"
+namespace_id = "1002"
+simple = { limit = 10, period = 60 }
