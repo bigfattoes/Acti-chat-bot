@@ -113,7 +113,9 @@
     ".sub{font-size:13px;opacity:.9;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
     ".icon-btn{background:transparent;border:0;color:#fff;cursor:pointer;width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex:none}",
     ".icon-btn:hover{background:rgba(255,255,255,.16)}",
-    ".log{flex:1;overflow-y:auto;padding:18px 16px 8px;display:flex;flex-direction:column;gap:14px;background:#fff;scroll-behavior:smooth}",
+    ".log{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:18px 16px 16px;display:flex;flex-direction:column;gap:14px;background:#fff;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:#D9D3E2 transparent}",
+    ".log::-webkit-scrollbar{width:6px}.log::-webkit-scrollbar-thumb{background:#D9D3E2;border-radius:3px}",
+    ".log>*{flex:none}",
     ".row{display:flex;gap:10px;align-items:flex-end;max-width:100%}",
     ".row.user{justify-content:flex-end}",
     ".row .mini{width:32px;height:32px;border-radius:50%;overflow:hidden;flex:none;align-self:flex-start}",
@@ -125,7 +127,7 @@
     ".bubble ul{margin:4px 0 6px;padding-inline-start:20px}.bubble li{margin:2px 0}",
     ".bubble a{color:#6F23B0;font-weight:600;text-decoration:underline;text-underline-offset:2px}",
     ".bubble strong{font-weight:700}",
-    ".chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 10px 58px}",
+    ".chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 0 0 42px;flex:none}",
     ".chip{border:1.5px solid #EE6A1A;color:#B9480A;background:#FFF6EF;border-radius:999px;padding:7px 13px;font-size:13.5px;cursor:pointer;font-weight:600}",
     ".chip:hover{background:#EE6A1A;color:#fff}",
     ".typing{display:inline-flex;gap:4px;padding:4px 2px}",
@@ -149,7 +151,7 @@
     ".wa-opt:focus-visible{outline:3px solid #EE6A1A;outline-offset:2px}",
     ".note{font-size:11.5px;color:#7a7484;text-align:center;margin-top:6px}",
     ".reset-btn{background:none;border:0;padding:0;margin-left:4px;font-size:11.5px;color:#6F23B0;font-weight:600;text-decoration:underline;cursor:pointer}",
-    "@media (max-width:480px){.wrap{bottom:14px;" + CONFIG.position + ":14px}.panel.open{position:fixed;inset:0;width:100vw;height:100%;max-height:none;border-radius:0}.panel.open~.launcher{display:none}.expand-btn{display:none}}",
+    "@media (max-width:480px){.wrap{bottom:14px;" + CONFIG.position + ":14px}.panel.open{position:fixed;inset:0;width:100vw;height:100%;height:100dvh;max-height:none;border-radius:0}.chips{padding-left:0}.panel.open~.launcher{display:none}.expand-btn{display:none}}",
     "@media (prefers-reduced-motion:reduce){.panel{animation:none}.typing span{animation:none}.log{scroll-behavior:auto}}",
   ].join("\n");
 
@@ -170,7 +172,6 @@
     '<button class="icon-btn close-btn" type="button" aria-label="Close chat" title="Close">' + ICON.close + "</button>" +
     "</header>" +
     '<div class="log" aria-live="polite"></div>' +
-    '<div class="chips"></div>' +
     '<div class="foot">' +
     '<button class="wa-btn" type="button">' + ICON.whatsapp + "<span>Chat with our team on WhatsApp</span></button>" +
     '<form class="compose">' +
@@ -183,7 +184,7 @@
     "</div>";
 
   var $ = function (s) { return root.querySelector(s); };
-  var panel = $(".panel"), log = $(".log"), chips = $(".chips"), form = $(".compose");
+  var panel = $(".panel"), log = $(".log"), chips = document.createElement("div"), form = $(".compose");
   var input = $("textarea"), sendBtn = $(".send"), launcher = $(".launcher"), expandBtn = $(".expand-btn");
   $(".title").textContent = CONFIG.botName;
 
@@ -248,9 +249,14 @@
     return row;
   }
 
+  // Suggestion chips live inside the conversation (not a fixed strip below it), so on small
+  // screens they scroll with the messages instead of squeezing and covering them.
   function renderChips() {
+    chips.className = "chips";
     chips.innerHTML = "";
+    chips.remove();
     if (state.history.length) return;
+    log.appendChild(chips);
     CONFIG.suggestions.forEach(function (q) {
       var b = document.createElement("button");
       b.type = "button";
@@ -386,8 +392,8 @@
     if (!text || state.busy) return;
     var prior = state.history.slice(-6).map(function (m) { return { role: m.role, content: m.content }; });
     state.history.push({ role: "user", content: text });
+    chips.remove();
     addBubble("user", text);
-    chips.innerHTML = "";
     input.value = "";
     autosize();
     state.busy = true;
