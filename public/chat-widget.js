@@ -151,7 +151,7 @@
     ".wa-opt:focus-visible{outline:3px solid #EE6A1A;outline-offset:2px}",
     ".note{font-size:11.5px;color:#7a7484;text-align:center;margin-top:6px}",
     ".reset-btn{background:none;border:0;padding:0;margin-left:4px;font-size:11.5px;color:#6F23B0;font-weight:600;text-decoration:underline;cursor:pointer}",
-    "@media (max-width:480px){.wrap{bottom:14px;" + CONFIG.position + ":14px}.panel.open{position:fixed;inset:0;width:100vw;height:100%;height:100dvh;max-height:none;border-radius:0}.chips{padding-left:0}.panel.open~.launcher{display:none}.expand-btn{display:none}}",
+    "@media (max-width:480px){.wrap{bottom:14px;" + CONFIG.position + ":14px}.panel.open{position:fixed;inset:0;width:100vw;height:100%;height:100dvh;max-height:none;border-radius:0}.chips{padding-left:0}textarea{font-size:16px}.panel.open~.launcher{display:none}.expand-btn{display:none}}",
     "@media (prefers-reduced-motion:reduce){.panel{animation:none}.typing span{animation:none}.log{scroll-behavior:auto}}",
   ].join("\n");
 
@@ -360,6 +360,30 @@
   }
 
   // ---------- behaviour ----------
+  // Touch devices: don't pop the keyboard on open or after each reply; the visitor taps the box.
+  var isTouch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  var isPhone = function () { return window.matchMedia && window.matchMedia("(max-width: 480px)").matches; };
+  function focusInput() { if (!isTouch) input.focus(); }
+
+  // On phones the panel is full-screen. When the keyboard opens, iOS shrinks only the *visual*
+  // viewport and scrolls it, so a plain fixed full-screen panel leaves a white gap and shows the
+  // page underneath. Pin the panel to the visual viewport instead.
+  var vv = window.visualViewport;
+  function fitToViewport() {
+    if (!vv || !state.open || !isPhone()) {
+      panel.style.top = panel.style.height = panel.style.bottom = "";
+      return;
+    }
+    panel.style.top = vv.offsetTop + "px";
+    panel.style.height = vv.height + "px";
+    panel.style.bottom = "auto";
+    log.scrollTop = log.scrollHeight;
+  }
+  if (vv) {
+    vv.addEventListener("resize", fitToViewport);
+    vv.addEventListener("scroll", fitToViewport);
+  }
+
   function setOpen(open) {
     state.open = open;
     panel.classList.toggle("open", open);
@@ -367,8 +391,9 @@
     launcher.setAttribute("aria-label", open ? "Close chat" : "Chat with Acti, the ActivateMe® assistant");
     if (open) {
       loadHandoff();
-      setTimeout(function () { input.focus(); }, 50);
+      setTimeout(focusInput, 50);
     }
+    fitToViewport();
   }
 
   function setExpanded(expanded) {
@@ -426,7 +451,7 @@
         persist();
         state.busy = false;
         updateSend();
-        input.focus();
+        focusInput();
       });
   }
 
@@ -439,8 +464,10 @@
     state.history = [];
     persist();
     renderAll();
-    input.focus();
+    focusInput();
   });
+  // Keep the keyboard open when tapping Send on phones (the button would otherwise take focus).
+  sendBtn.addEventListener("mousedown", function (e) { if (document.activeElement === host) e.preventDefault(); });
   form.addEventListener("submit", function (e) { e.preventDefault(); send(input.value); });
   input.addEventListener("input", function () { autosize(); updateSend(); });
   input.addEventListener("keydown", function (e) {
