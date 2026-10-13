@@ -383,6 +383,32 @@
     vv.addEventListener("resize", fitToViewport);
     vv.addEventListener("scroll", fitToViewport);
   }
+  // iOS reports the keyboard size a little after focus, so re-fit a few times as it animates.
+  input.addEventListener("focus", function () {
+    [50, 150, 300, 600].forEach(function (ms) { setTimeout(fitToViewport, ms); });
+  });
+  input.addEventListener("blur", function () { setTimeout(fitToViewport, 300); });
+
+  // While the full-screen chat is open on a phone, freeze the page behind it so the browser
+  // can't scroll the website into view when the keyboard opens. Restored exactly on close.
+  var locked = null;
+  function lockPage(lock) {
+    var html = document.documentElement, body = document.body;
+    if (lock && !locked && isPhone()) {
+      locked = { y: window.scrollY, html: html.style.overflow, pos: body.style.position, top: body.style.top, w: body.style.width };
+      html.style.overflow = "hidden";
+      body.style.position = "fixed";
+      body.style.top = -locked.y + "px";
+      body.style.width = "100%";
+    } else if (!lock && locked) {
+      html.style.overflow = locked.html;
+      body.style.position = locked.pos;
+      body.style.top = locked.top;
+      body.style.width = locked.w;
+      window.scrollTo(0, locked.y);
+      locked = null;
+    }
+  }
 
   function setOpen(open) {
     state.open = open;
@@ -393,6 +419,7 @@
       loadHandoff();
       setTimeout(focusInput, 50);
     }
+    lockPage(open);
     fitToViewport();
   }
 
