@@ -98,6 +98,23 @@ The speech bubble appears 1.5 seconds after every page view, including in-site p
 for that page only. Changes here go live without
 touching the website: the site loads `chat-widget.js` from the worker on every page view.
 
+## Question log (private /logs page)
+
+Acti saves each question anonymously so the team can see what visitors ask, what Acti couldn't
+answer, and which questions became leads. Open `https://<worker URL>/logs` and enter the password
+(any username). There's also a CSV download.
+
+- **Saved:** time, site, page, the question, Acti's answer, and the outcome (answered, couldn't
+  answer, lead: partner/ambassador/register/team, off-topic).
+- **Not saved:** anything that identifies the visitor. Emails and phone numbers typed into the chat
+  are replaced with `[email]` / `[number]`. Entries older than 90 days are deleted.
+- **Storage:** Cloudflare D1 (free), binding `DB`. The database `activateme-assistant-db` is
+  created automatically on the first deploy.
+- **Password:** the `LOGS_PASSWORD` secret. Set it in the Cloudflare dashboard → Workers & Pages
+  → activateme-assistant → Settings → Variables and Secrets → Add → type *Secret*. Until it's set,
+  `/logs` is switched off. Preview builds don't log.
+- The chat footer tells visitors: "Questions are saved anonymously to improve Acti."
+
 ## Tracking (Google Analytics)
 
 If the website has Google Analytics (gtag) or Google Tag Manager, Acti sends these events:

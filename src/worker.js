@@ -15,6 +15,7 @@
 //   3. Short replies, low temperature, and an exact refusal line for anything off-topic.
 
 import KNOWLEDGE from "../knowledge.md";
+import { logQuestion, logsPage } from "./logs.js";
 
 const MAX_MESSAGE_CHARS = 500;
 const MAX_HISTORY_TURNS = 6; // last 6 messages (3 back-and-forths)
@@ -84,7 +85,7 @@ ${KNOWLEDGE}
 """`;
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const cors = corsHeaders(request, env);
 
@@ -94,6 +95,10 @@ export default {
 
     if (url.pathname === "/health") {
       return json({ ok: true }, 200, cors);
+    }
+
+    if (url.pathname === "/logs" || url.pathname === "/logs.csv") {
+      return logsPage(request, env, url);
     }
 
     if (url.pathname === "/handoff-config") {
@@ -137,10 +142,14 @@ export default {
       { role: "user", content: wrapVisitorMessage(message) },
     ];
 
+    // Anonymous question log (see src/logs.js); runs after the reply, never slows it down.
+    const site = (() => { try { return new URL(request.headers.get("Origin") || "").host; } catch { return ""; } })();
+    const page = typeof body.page === "string" ? body.page : "";
     const finish = (raw) => {
       const result = parseReply(raw);
       const topic = result.refused ? null : detectTopic(message);
       if (topic) Object.assign(result, { handoff: true, topic });
+      ctx?.waitUntil(logQuestion(env, { site, page, question: message, result }));
       return result;
     };
 
@@ -154,7 +163,9 @@ export default {
     } catch (err) {
       // Most common cause: the free daily quota is used up. Fail politely, never with a stack trace.
       console.error("AI call failed:", err?.message || err);
-      return json({ reply: FALLBACK, handoff: true }, 200, cors);
+      const result = { reply: FALLBACK, handoff: true };
+      ctx?.waitUntil(logQuestion(env, { site, page, question: message, result }));
+      return json(result, 200, cors);
     }
   },
 };
@@ -321,7 +332,7 @@ function streamReply(env, messages, finish, cors) {
     } catch (err) {
       console.error("AI stream failed:", err?.message || err);
       // Quota used up or model error: same polite fallback as the non-streaming path.
-      await send({ done: true, ...(full.trim() ? finish(full) : { reply: FALLBACK, handoff: true }) }).catch(() => {});
+      await send({ done: true, ...finish(full) }).catch(() => {}); // empty text -> FALLBACK + handoff
     } finally {
       await writer.close().catch(() => {});
     }

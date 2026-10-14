@@ -222,7 +222,7 @@
     '<textarea rows="1" maxlength="' + MAX_CHARS + '" placeholder="Ask Acti about the festival…" aria-label="Your question"></textarea>' +
     '<button class="send" type="submit" aria-label="Send">' + ICON.send + "</button>" +
     "</form>" +
-    '<div class="note">AI answers can be wrong — check activatemefest.com. <button class="reset-btn" type="button">New chat</button></div></div>' +
+    '<div class="note">AI can make mistakes. Questions are saved anonymously to improve Acti. <button class="reset-btn" type="button">New chat</button></div></div>' +
     "</section>" +
     '<div class="teaser" role="button" tabindex="0"><span></span><button class="teaser-x" type="button" aria-label="Dismiss"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
     '<button class="launcher" type="button" aria-label="Chat with Acti, the ActivateMe® assistant">' + avatarHTML + "</button>" +
@@ -563,7 +563,7 @@
     fetch(CONFIG.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, history: prior, stream: true }),
+      body: JSON.stringify({ message: text, history: prior, stream: true, page: location.pathname }),
     })
       .then(function (r) {
         var type = r.headers.get("content-type") || "";

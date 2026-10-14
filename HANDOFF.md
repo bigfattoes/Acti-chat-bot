@@ -137,3 +137,5 @@ activatemefest.com, mwanevents.com and mwanmobile.com.
 - **Contacts:** Svetlana Efimova (CEO / Festival Director) svetlana@mwanevents.com ·
   Andreas Tsindos (CDO) andreas.tsindos@mwanmobile.com · general: info@mwanevents.com,
   WhatsApp +971 52 458 6156.
+- **Question log:** `src/logs.js` saves anonymous questions to D1 (`DB`) and serves `/logs`
+  (password secret `LOGS_PASSWORD`, set by Aseel in the dashboard; never ask for it in chat).

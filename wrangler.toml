@@ -23,6 +23,12 @@ name = "CHAT_LIMITER"
 namespace_id = "1001"
 simple = { limit = 10, period = 60 }
 
+# Anonymous question log for the private /logs page (see src/logs.js). Cloudflare creates this
+# database ("activateme-assistant-db") automatically on the first deploy. The page also needs
+# the LOGS_PASSWORD secret (Cloudflare dashboard -> the worker -> Settings -> Variables and Secrets).
+[[d1_databases]]
+binding = "DB"
+
 [vars]
 # "workers-ai" (default, no extra account) or "gemini" (needs: npx wrangler secret put GEMINI_API_KEY)
 PROVIDER = "workers-ai"
