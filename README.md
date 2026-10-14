@@ -66,7 +66,7 @@ Optional attributes on that tag:
 | `data-endpoint` | script host + `/chat` | Only needed if you put the API on a custom route |
 | `data-utter-widget-id` | `695222f369041029ef96ba3a` (ActivateMe) | Utter widget whose WhatsApp number, CTA buttons and #tags the handoff uses |
 | `data-teaser` | `true` | `false` turns off the small speech bubble next to the launcher |
-| `data-teaser-delay` | `6` | Seconds before the speech bubble appears (once per browser session) |
+| `data-teaser-delay` | `1.5` | Seconds before the speech bubble appears on each page view |
 
 The widget renders in a Shadow DOM, so the site's Bootstrap CSS can't break it and it can't
 break the site.
@@ -93,8 +93,9 @@ Acti changes its greeting, suggestion buttons and speech bubble to match the pag
 | Contact us (`/contact…`) | "Questions? I can help right now!" | dates, contacts, tickets, partnering |
 | Everything else | "Hi! Questions about the festival?" | the default four |
 
-The speech bubble appears 6 seconds after the page loads, once per browser session, and never
-again after the visitor opens the chat or closes the bubble. Changes here go live without
+The speech bubble appears 1.5 seconds after every page view, including in-site page changes
+(the site switches pages without a full reload, so Acti watches the URL). Closing it hides it
+for that page only. Changes here go live without
 touching the website: the site loads `chat-widget.js` from the worker on every page view.
 
 ## WhatsApp handoff (Utter)

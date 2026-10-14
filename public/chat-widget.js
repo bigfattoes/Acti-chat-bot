@@ -13,7 +13,7 @@
  *   data-utter-widget-id  Utter (utterchat.ai) widget whose WhatsApp number, CTA buttons and #tags
  *                         power the "Chat with our team on WhatsApp" handoff (default: ActivateMe)
  *   data-teaser     "false" to turn off the small "Questions?" speech bubble by the launcher
- *   data-teaser-delay  Seconds before the speech bubble appears (default 6)
+ *   data-teaser-delay  Seconds before the speech bubble appears (default 1.5)
  */
 (function () {
   "use strict";
@@ -37,7 +37,7 @@
     avatar: attr("avatar", scriptOrigin + "/acti.jpg"),
     openOnLoad: attr("open", "false") === "true",
     teaser: attr("teaser", "true") !== "false",
-    teaserDelay: Math.max(0, Number(attr("teaser-delay", "6")) || 6) * 1000,
+    teaserDelay: (function (v) { return isFinite(v) && v >= 0 ? v * 1000 : 1500; })(Number(attr("teaser-delay", "1.5"))),
   };
 
   // Page-aware greeting, suggestions and speech bubble: matched on the page's URL path.
@@ -68,8 +68,12 @@
       "Hi, I'm Acti, your ActivateMe® Fest guide! Ask me anything about the festival on 16–17 January 2027 — tickets, timings, activities, partnering, or MWAN Events.",
     suggestions: ["When and where is it?", "How much are tickets?", "What can kids do there?", "How can my brand partner?"],
   };
-  var page = DEFAULT_PAGE;
-  for (var pi = 0; pi < PAGES.length; pi++) if (PAGES[pi].match.test(location.pathname)) { page = PAGES[pi]; break; }
+  // The site changes pages without a full reload, so this is re-checked whenever the URL changes.
+  function pageFor(path) {
+    for (var i = 0; i < PAGES.length; i++) if (PAGES[i].match.test(path)) return PAGES[i];
+    return DEFAULT_PAGE;
+  }
+  var page = pageFor(location.pathname);
   CONFIG.greeting = page.greeting;
   CONFIG.suggestions = page.suggestions;
 
@@ -549,34 +553,59 @@
   updateSend();
 
   // ---------- speech bubble ("teaser") ----------
-  // Shown once per browser session, a few seconds after load, unless the visitor has already
-  // opened the chat or dismissed it.
-  var TEASER_KEY = "activateme-teaser-seen";
+  // Appears shortly after every page view (and every in-site page change) while the chat is
+  // closed. Closing it hides it for the current page only.
   var teaser = $(".teaser");
-  teaser.querySelector("span").textContent = page.teaser;
-  function teaserSeen() {
-    try { return sessionStorage.getItem(TEASER_KEY) === "1"; } catch (e) { return false; }
-  }
+  var teaserTimer = null;
   function hideTeaser() {
+    clearTimeout(teaserTimer);
     teaser.classList.remove("show");
-    try { sessionStorage.setItem(TEASER_KEY, "1"); } catch (e) {}
+  }
+  function scheduleTeaser() {
+    hideTeaser();
+    if (!CONFIG.teaser) return;
+    teaser.querySelector("span").textContent = page.teaser;
+    teaserTimer = setTimeout(function () { if (!state.open) teaser.classList.add("show"); }, CONFIG.teaserDelay);
   }
   teaser.addEventListener("click", function (e) {
-    if (e.target.closest(".teaser-x")) { hideTeaser(); return; }
     hideTeaser();
-    setOpen(true);
+    if (!e.target.closest(".teaser-x")) setOpen(true);
   });
   teaser.addEventListener("keydown", function (e) {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); hideTeaser(); setOpen(true); }
   });
   launcher.addEventListener("click", hideTeaser);
 
+  // Follow in-site navigation (pushState/back/forward): switch greeting, suggestions and bubble.
+  var lastPath = location.pathname;
+  function onUrlChange() {
+    if (location.pathname === lastPath) return;
+    lastPath = location.pathname;
+    var next = pageFor(lastPath);
+    if (next !== page) {
+      page = next;
+      CONFIG.greeting = page.greeting;
+      CONFIG.suggestions = page.suggestions;
+      if (!state.busy) renderAll();
+    }
+    if (!state.open) scheduleTeaser();
+  }
+  ["pushState", "replaceState"].forEach(function (fn) {
+    var orig = history[fn];
+    if (typeof orig !== "function") return;
+    history[fn] = function () {
+      var r = orig.apply(this, arguments);
+      setTimeout(onUrlChange, 0);
+      return r;
+    };
+  });
+  window.addEventListener("popstate", onUrlChange);
+  setInterval(onUrlChange, 1000); // safety net for routers that change the URL some other way
+
   function mount() {
     document.body.appendChild(host);
     if (CONFIG.openOnLoad) setOpen(true);
-    if (CONFIG.teaser && !CONFIG.openOnLoad && !teaserSeen() && !state.history.length) {
-      setTimeout(function () { if (!state.open && !teaserSeen()) teaser.classList.add("show"); }, CONFIG.teaserDelay);
-    }
+    else scheduleTeaser();
   }
   if (document.body) mount();
   else document.addEventListener("DOMContentLoaded", mount);
