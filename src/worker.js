@@ -1,7 +1,10 @@
 // ActivateMe® Fest assistant — Cloudflare Worker.
 //
-// POST /chat  { message: string, history?: [{ role: "user"|"assistant", content: string }] }
+// POST /chat  { message: string, history?: [{ role: "user"|"assistant", content: string }], stream?: true }
 //          -> { reply: string, handoff: boolean, topic?: "partner"|"ambassador"|"register"|"team", refused?: true }
+//          With stream: true -> newline-delimited JSON: { "d": "<text so far appended>" } lines while the
+//          model writes, then one { "done": true, reply, handoff, topic?, refused? } line with the
+//          cleaned final reply (the widget swaps that in).
 // GET  /handoff-config?id=<Utter widget id>
 //          -> { phone, title, ctas: [{ text, tag, phone }], source: "utter"|"default" }
 // Static files in /public (the widget + demo page) are served by Workers Assets before this runs.
@@ -134,12 +137,20 @@ export default {
       { role: "user", content: wrapVisitorMessage(message) },
     ];
 
-    try {
-      const raw = env.PROVIDER === "gemini" ? await askGemini(env, messages) : await askWorkersAI(env, messages);
+    const finish = (raw) => {
       const result = parseReply(raw);
       const topic = result.refused ? null : detectTopic(message);
       if (topic) Object.assign(result, { handoff: true, topic });
-      return json(result, 200, cors);
+      return result;
+    };
+
+    if (body.stream === true && env.PROVIDER !== "gemini") {
+      return streamReply(env, messages, finish, cors);
+    }
+
+    try {
+      const raw = env.PROVIDER === "gemini" ? await askGemini(env, messages) : await askWorkersAI(env, messages);
+      return json(finish(raw), 200, cors);
     } catch (err) {
       // Most common cause: the free daily quota is used up. Fail politely, never with a stack trace.
       console.error("AI call failed:", err?.message || err);
@@ -263,6 +274,63 @@ async function askWorkersAI(env, messages) {
     temperature: 0.2,
   });
   return typeof result?.response === "string" ? result.response : "";
+}
+
+// Streams Workers AI output to the browser as it's generated, so replies appear word by word.
+// The model's stream is server-sent events ("data: {\"response\":\"…\"}"); we forward plain text
+// deltas as NDJSON and finish with the same cleaned result the non-streaming path returns.
+function streamReply(env, messages, finish, cors) {
+  const enc = new TextEncoder();
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+  const send = (obj) => writer.write(enc.encode(JSON.stringify(obj) + "\n"));
+
+  (async () => {
+    let full = "";
+    try {
+      const stream = await env.AI.run(env.MODEL, {
+        messages,
+        max_tokens: MAX_REPLY_TOKENS,
+        temperature: 0.2,
+        stream: true,
+      });
+      const reader = stream.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (!line.startsWith("data:")) continue;
+          const data = line.slice(5).trim();
+          if (!data || data === "[DONE]") continue;
+          try {
+            const piece = JSON.parse(data).response;
+            if (typeof piece === "string" && piece) {
+              full += piece;
+              await send({ d: piece });
+            }
+          } catch {}
+        }
+      }
+      await send({ done: true, ...finish(full) });
+    } catch (err) {
+      console.error("AI stream failed:", err?.message || err);
+      // Quota used up or model error: same polite fallback as the non-streaming path.
+      await send({ done: true, ...(full.trim() ? finish(full) : { reply: FALLBACK, handoff: true }) }).catch(() => {});
+    } finally {
+      await writer.close().catch(() => {});
+    }
+  })();
+
+  return new Response(readable, {
+    status: 200,
+    headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store", ...cors },
+  });
 }
 
 async function askGemini(env, messages) {

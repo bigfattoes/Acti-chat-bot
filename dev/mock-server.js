@@ -42,8 +42,10 @@ createServer(async (req, res) => {
   if (url.pathname === "/chat" && req.method === "POST") {
     let raw = "";
     for await (const chunk of req) raw += chunk;
-    const message = (JSON.parse(raw || "{}").message || "").toString();
-    await new Promise((r) => setTimeout(r, 700));
+    const body = JSON.parse(raw || "{}");
+    const message = (body.message || "").toString();
+    await new Promise((r) => setTimeout(r, body.stream ? 300 : 700));
+    if (body.stream) return streamMock(res, message);
     res.writeHead(200, { "content-type": "application/json" });
     if (UNKNOWN[0].test(message)) return res.end(JSON.stringify({ reply: UNKNOWN[1], handoff: true }));
     const hit = CANNED.find(([re]) => re.test(message));
@@ -68,3 +70,20 @@ createServer(async (req, res) => {
     res.writeHead(404).end("Not found");
   }
 }).listen(PORT, () => console.log(`Mock preview: http://localhost:${PORT}/demo.html`));
+
+// Streams a canned reply word by word as NDJSON, like the real worker does with stream: true.
+async function streamMock(res, message) {
+  let result;
+  if (UNKNOWN[0].test(message)) result = { reply: UNKNOWN[1] + " [HANDOFF]", handoff: true };
+  else {
+    const hit = CANNED.find(([re]) => re.test(message));
+    const topic = /partner|sponsor|brand|booth/i.test(message) ? "partner" : null;
+    result = hit ? { reply: hit[1], handoff: !!topic, ...(topic && { topic }) } : { reply: REFUSAL, handoff: false, refused: true };
+  }
+  res.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
+  for (const word of result.reply.match(/\S+\s*/g)) {
+    res.write(JSON.stringify({ d: word }) + "\n");
+    await new Promise((r) => setTimeout(r, 40));
+  }
+  res.end(JSON.stringify({ done: true, ...result, reply: result.reply.replace(" [HANDOFF]", "") }) + "\n");
+}

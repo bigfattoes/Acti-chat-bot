@@ -268,6 +268,58 @@
     return out.join("");
   }
 
+  // While a reply streams in, hide the internal [HANDOFF] tag (even half-written) and never show
+  // "knowledge base"; the worker sends a cleaned final version that replaces this when done.
+  function displayText(t) {
+    return String(t)
+      .replace(/\s*\[\s*HANDOFF\s*\]\s*/gi, " ")
+      .replace(/\[[A-Za-z]{0,8}$/, "")
+      .replace(/\b(?:the|my) knowledge base\b/gi, "my festival info")
+      .replace(/\bknowledge base\b/gi, "festival info");
+  }
+  function setBubble(row, text) {
+    var bubble = row.querySelector(".bubble");
+    bubble.innerHTML = renderMarkdown(text);
+    decorateLinks(bubble);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // ---------- analytics ----------
+  // Sends events to the site's Google Analytics (gtag) or Google Tag Manager (dataLayer), if present.
+  function track(name, params) {
+    try {
+      params = params || {};
+      if (typeof window.gtag === "function") window.gtag("event", name, params);
+      else if (Array.isArray(window.dataLayer)) {
+        var ev = { event: name };
+        for (var k in params) ev[k] = params[k];
+        window.dataLayer.push(ev);
+      }
+    } catch (e) {}
+  }
+  // Links to the festival site get ?ref=acti (visible in GA as part of the page URL) and open in
+  // the same tab when it's the same site; every link click is sent as an "acti_link_click" event.
+  var SITE_HOST = /(^|\.)activatemefest\.com$/i;
+  function decorateLinks(el) {
+    var links = el.querySelectorAll("a[href^='http']");
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i], u;
+      try { u = new URL(a.href); } catch (e) { continue; }
+      if (SITE_HOST.test(u.hostname)) {
+        u.searchParams.set("ref", "acti");
+        a.href = u.toString();
+        if (u.hostname.replace(/^www\./, "") === location.hostname.replace(/^www\./, "")) a.removeAttribute("target");
+      }
+      if (!a._tracked) {
+        a._tracked = true;
+        a.addEventListener("click", function (e) {
+          var href = e.currentTarget.href;
+          track("acti_link_click", { link_url: href, link_type: /booking/i.test(href) ? "booking" : "other" });
+        });
+      }
+    }
+  }
+
   function addBubble(role, text) {
     var row = document.createElement("div");
     row.className = "row " + (role === "user" ? "user" : "bot");
@@ -275,7 +327,7 @@
     bubble.className = "bubble";
     bubble.setAttribute("dir", "auto");
     if (role === "user") bubble.textContent = text;
-    else bubble.innerHTML = renderMarkdown(text);
+    else { bubble.innerHTML = renderMarkdown(text); decorateLinks(bubble); }
     if (role !== "user") {
       var mini = document.createElement("div");
       mini.className = "mini";
@@ -377,7 +429,10 @@
         a.querySelector("span").textContent = cta.text;
         // Built on click so the message always includes the latest questions.
         a.href = whatsappLink(cta);
-        a.addEventListener("click", function () { a.href = whatsappLink(cta); });
+        a.addEventListener("click", function () {
+          a.href = whatsappLink(cta);
+          track("acti_whatsapp_click", { topic: cta.tag || "general", button_text: cta.text });
+        });
         opts.appendChild(a);
       });
     }
@@ -461,6 +516,7 @@
     launcher.innerHTML = open ? ICON.close : avatarHTML;
     launcher.setAttribute("aria-label", open ? "Close chat" : "Chat with Acti, the ActivateMe® assistant");
     if (open) {
+      track("acti_open", { page_path: location.pathname });
       loadHandoff();
       setTimeout(focusInput, 50);
     }
@@ -497,12 +553,48 @@
     updateSend();
     var typing = showTyping();
 
+    var row = null, acc = "", drawQueued = false;
+    function draw() {
+      drawQueued = false;
+      if (!row) { typing.remove(); row = addBubble("assistant", ""); }
+      setBubble(row, displayText(acc));
+    }
+
     fetch(CONFIG.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, history: prior }),
+      body: JSON.stringify({ message: text, history: prior, stream: true }),
     })
-      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (r) {
+        var type = r.headers.get("content-type") || "";
+        if (type.indexOf("ndjson") < 0 || !r.body || !r.body.getReader) {
+          return r.json().catch(function () { return {}; }); // older worker or error JSON
+        }
+        // Streaming: show the reply as it's written, then swap in the cleaned final version.
+        var reader = r.body.getReader(), dec = new TextDecoder(), buf = "", final = null;
+        function pump() {
+          return reader.read().then(function (chunk) {
+            if (chunk.done) return final || { reply: acc };
+            buf += dec.decode(chunk.value, { stream: true });
+            var nl;
+            while ((nl = buf.indexOf("\n")) >= 0) {
+              var line = buf.slice(0, nl).trim();
+              buf = buf.slice(nl + 1);
+              if (!line) continue;
+              try {
+                var msg = JSON.parse(line);
+                if (msg.done) final = msg;
+                else if (typeof msg.d === "string") {
+                  acc += msg.d;
+                  if (!drawQueued) { drawQueued = true; requestAnimationFrame(draw); }
+                }
+              } catch (e) {}
+            }
+            return pump();
+          });
+        }
+        return pump();
+      })
       .then(function (data) {
         return data && data.reply
           ? { reply: data.reply, handoff: data.handoff === true, topic: typeof data.topic === "string" ? data.topic : null, refused: data.refused === true }
@@ -518,7 +610,8 @@
         if (res.refused) entry.refused = true;
         if (res.topic) entry.topic = res.topic;
         state.history.push(entry);
-        addBubble("assistant", res.reply);
+        if (row) setBubble(row, res.reply);
+        else addBubble("assistant", res.reply);
         if (res.handoff) showHandoff(handoffIntro(res.topic), res.topic);
         persist();
         state.busy = false;
