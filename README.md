@@ -98,6 +98,26 @@ The speech bubble appears 1.5 seconds after every page view, including in-site p
 for that page only. Changes here go live without
 touching the website: the site loads `chat-widget.js` from the worker on every page view.
 
+## Tracking (Google Analytics)
+
+If the website has Google Analytics (gtag) or Google Tag Manager, Acti sends these events:
+
+| Event | When | Details |
+|---|---|---|
+| `acti_open` | The chat is opened | `page_path` |
+| `acti_link_click` | A link in an answer is clicked | `link_url`, `link_type` (`booking` or `other`) |
+| `acti_whatsapp_click` | A WhatsApp button is clicked | `topic` (#tag), `button_text` |
+
+Links to activatemefest.com in Acti's answers also get `?ref=acti`, so ticket-page visits from
+Acti show up in GA under page URLs containing `ref=acti`. (No `utm_` tags on purpose: on links
+within the same site they'd overwrite the visitor's real traffic source.)
+
+## Streaming replies
+
+Answers appear word by word as the AI writes them (`stream: true` on `POST /chat`, NDJSON
+response). The worker still sends a cleaned final version at the end, which replaces the
+streamed text. Requests without `stream` get the old single JSON reply.
+
 ## WhatsApp handoff (Utter)
 
 - The panel has a permanent **"Chat with our team on WhatsApp"** button.
