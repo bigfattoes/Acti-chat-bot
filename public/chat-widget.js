@@ -205,7 +205,7 @@
     ".note{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;font-size:12px;color:#7a7484}",
     ".reset-btn{background:none;border:0;padding:0;font-size:12px;color:#6F23B0;font-weight:600;text-decoration:underline;cursor:pointer}",
     ".powered{display:inline-flex;align-items:center;gap:5px;color:#7a7484;text-decoration:none;font-size:12px}",
-    ".powered img{height:14px;width:auto;display:block}",
+    ".powered img{height:16px;width:auto;display:block}",
     ".powered b{color:#1DA851;font-weight:800;letter-spacing:-.02em}",
     ".disclaimer{margin:-6px 0 0 42px;font-size:11.5px;color:#8a8494;line-height:1.4}",
     "@media (max-width:480px){.wrap{bottom:14px;" + CONFIG.position + ":14px}.panel.open{position:fixed;inset:0;width:100vw;height:100%;height:100dvh;max-height:none;border-radius:0}.chips{padding-left:0}textarea{font-size:16px}.panel.open~.launcher{display:none}.expand-btn{display:none}}",
