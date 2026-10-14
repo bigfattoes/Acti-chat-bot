@@ -31,6 +31,7 @@
   var CONFIG = {
     endpoint: endpoint,
     handoffConfigUrl: attr("handoff-config", endpoint.replace(/\/chat\/?$/, "") + "/handoff-config"),
+    feedbackUrl: endpoint.replace(/\/chat\/?$/, "") + "/feedback",
     utterWidgetId: attr("utter-widget-id", "695222f369041029ef96ba3a"),
     botName: attr("bot-name", "Acti"),
     position: attr("position", "right") === "left" ? "left" : "right",
@@ -125,6 +126,8 @@
     expand: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>',
     shrink: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M10 14l-7 7M14 10l7-7"/></svg>',
     whatsapp: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.2-.2-.5-.3z"/></svg>',
+    up: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>',
+    down: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>',
     send: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>',
   };
   var BADGE =
@@ -193,6 +196,10 @@
     ".wa-opt:hover{background:#128C3F}",
     ".wa-opt.match{box-shadow:0 0 0 3px #BFEFD0}",
     ".wa-opt:focus-visible{outline:3px solid #EE6A1A;outline-offset:2px}",
+    ".rating{display:flex;align-items:center;gap:4px;margin:-8px 0 0 42px;font-size:12px;color:#7a7484}",
+    ".rating button{background:none;border:1px solid transparent;color:#8a8494;cursor:pointer;width:28px;height:26px;border-radius:8px;display:grid;place-items:center;padding:0}",
+    ".rating button:hover{background:#F3F2F1;color:#6F23B0}",
+    ".rating .on{color:#6F23B0;background:#F3EAFB;border-color:#E3D2F3}",
     ".note{font-size:11.5px;color:#7a7484;text-align:center;margin-top:6px}",
     ".reset-btn{background:none;border:0;padding:0;margin-left:4px;font-size:11.5px;color:#6F23B0;font-weight:600;text-decoration:underline;cursor:pointer}",
     "@media (max-width:480px){.wrap{bottom:14px;" + CONFIG.position + ":14px}.panel.open{position:fixed;inset:0;width:100vw;height:100%;height:100dvh;max-height:none;border-radius:0}.chips{padding-left:0}textarea{font-size:16px}.panel.open~.launcher{display:none}.expand-btn{display:none}}",
@@ -282,6 +289,38 @@
     bubble.innerHTML = renderMarkdown(text);
     decorateLinks(bubble);
     log.scrollTop = log.scrollHeight;
+  }
+
+  // ---------- 👍 / 👎 ----------
+  // Shown under answers the worker logged (they carry a rid). The rating is saved to the
+  // anonymous question log so the team can see which answers weren't helpful.
+  function addRating(row, entry) {
+    if (!entry.rid || entry.refused) return;
+    var box = document.createElement("div");
+    box.className = "rating";
+    function draw() {
+      if (entry.rating) {
+        box.innerHTML = "<span>Thanks for the feedback!</span>";
+        return;
+      }
+      box.innerHTML = '<span>Helpful?</span><button type="button" class="up" aria-label="Helpful" title="Helpful">' + ICON.up +
+        '</button><button type="button" class="down" aria-label="Not helpful" title="Not helpful">' + ICON.down + "</button>";
+      box.querySelector(".up").addEventListener("click", function () { rate(1); });
+      box.querySelector(".down").addEventListener("click", function () { rate(-1); });
+    }
+    function rate(v) {
+      entry.rating = v;
+      persist();
+      draw();
+      track("acti_rating", { rating: v === 1 ? "helpful" : "not_helpful" });
+      fetch(CONFIG.feedbackUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rid: entry.rid, rating: v }),
+      }).catch(function () {});
+    }
+    draw();
+    row.parentNode.insertBefore(box, row.nextSibling);
   }
 
   // ---------- analytics ----------
@@ -453,7 +492,10 @@
   function renderAll() {
     log.innerHTML = "";
     addBubble("bot", CONFIG.greeting);
-    state.history.forEach(function (m) { addBubble(m.role, m.content); });
+    state.history.forEach(function (m) {
+      var r = addBubble(m.role, m.content);
+      if (m.role === "assistant") addRating(r, m);
+    });
     var last = state.history[state.history.length - 1];
     if (last && last.role === "assistant" && last.handoff) showHandoff(handoffIntro(last.topic), last.topic);
     renderChips();
@@ -597,7 +639,7 @@
       })
       .then(function (data) {
         return data && data.reply
-          ? { reply: data.reply, handoff: data.handoff === true, topic: typeof data.topic === "string" ? data.topic : null, refused: data.refused === true }
+          ? { reply: data.reply, handoff: data.handoff === true, topic: typeof data.topic === "string" ? data.topic : null, refused: data.refused === true, rid: typeof data.rid === "string" ? data.rid : null }
           : { reply: "Sorry, something went wrong. Please try again, or contact info@mwanevents.com.", handoff: true };
       })
       .catch(function () {
@@ -609,9 +651,11 @@
         if (res.handoff) entry.handoff = true;
         if (res.refused) entry.refused = true;
         if (res.topic) entry.topic = res.topic;
+        if (res.rid) entry.rid = res.rid;
         state.history.push(entry);
         if (row) setBubble(row, res.reply);
-        else addBubble("assistant", res.reply);
+        else row = addBubble("assistant", res.reply);
+        addRating(row, entry);
         if (res.handoff) showHandoff(handoffIntro(res.topic), res.topic);
         persist();
         state.busy = false;

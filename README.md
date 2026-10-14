@@ -114,6 +114,17 @@ answer, and which questions became leads. Open `https://<worker URL>/logs` and e
   → activateme-assistant → Settings → Variables and Secrets → Add → type *Secret*. Until it's set,
   `/logs` is switched off. Preview builds don't log.
 - The chat footer tells visitors: "Questions are saved anonymously to improve Acti."
+- Times are shown in Dubai time (UTC+4).
+
+**Visitor ratings.** Each answer has 👍 / 👎 buttons. Ratings are saved with the question and shown
+on `/logs` (counts at the top, a "👎 Not helpful" filter, and a rating column in the CSV). They're
+also sent to Google Analytics as `acti_rating`.
+
+**Teach Acti.** On `/logs`, any question Acti couldn't answer (or got wrong) has
+"+ Add the right answer". What you write is saved in D1 (`taught` table) and added to Acti's
+knowledge on every request, so it's used within about a minute, no GitHub needed. All taught
+answers are listed at the bottom of `/logs`, where they can be edited or removed. For permanent
+facts, also add them to `knowledge.md` (and the Utter upload files) when convenient.
 
 ## Tracking (Google Analytics)
 
