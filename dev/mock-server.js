@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 
 const PUBLIC = fileURLToPath(new URL("../public/", import.meta.url));
 const PORT = Number(process.env.PORT) || 8787;
-const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".jpg": "image/jpeg" };
+const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".jpg": "image/jpeg", ".svg": "image/svg+xml" };
 
 const CANNED = [
   [/when|where|date|venue|متى/i, "ActivateMe® Fest Season 2 is on **Saturday 16 and Sunday 17 January 2027** at Dubai Silicon Oasis, Dubai.\n- Saturday: 12:00 PM – 9:00 PM\n- Sunday: 10:00 AM – 6:00 PM\n\nTickets: https://www.activatemefest.com/activate-me-festival/booking"],

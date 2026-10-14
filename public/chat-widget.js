@@ -12,6 +12,7 @@
  *   data-open       "true" to open the panel on page load
  *   data-utter-widget-id  Utter (utterchat.ai) widget whose WhatsApp number, CTA buttons and #tags
  *                         power the "Chat with our team on WhatsApp" handoff (default: ActivateMe)
+ *   data-utter-logo  Image URL for the "Powered by Utter" footer logo (default: utter-logo.svg next to this script)
  *   data-teaser     "false" to turn off the small "Questions?" speech bubble by the launcher
  *   data-teaser-delay  Seconds before the speech bubble appears (default 1.5)
  */
@@ -36,6 +37,7 @@
     botName: attr("bot-name", "Acti"),
     position: attr("position", "right") === "left" ? "left" : "right",
     avatar: attr("avatar", scriptOrigin + "/acti.jpg"),
+    utterLogo: attr("utter-logo", scriptOrigin + "/utter-logo.svg"),
     openOnLoad: attr("open", "false") === "true",
     teaser: attr("teaser", "true") !== "false",
     teaserDelay: (function (v) { return isFinite(v) && v >= 0 ? v * 1000 : 1500; })(Number(attr("teaser-delay", "1.5"))),
@@ -200,8 +202,12 @@
     ".rating button{background:none;border:1px solid transparent;color:#8a8494;cursor:pointer;width:28px;height:26px;border-radius:8px;display:grid;place-items:center;padding:0}",
     ".rating button:hover{background:#F3F2F1;color:#6F23B0}",
     ".rating .on{color:#6F23B0;background:#F3EAFB;border-color:#E3D2F3}",
-    ".note{font-size:11.5px;color:#7a7484;text-align:center;margin-top:6px}",
-    ".reset-btn{background:none;border:0;padding:0;margin-left:4px;font-size:11.5px;color:#6F23B0;font-weight:600;text-decoration:underline;cursor:pointer}",
+    ".note{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;font-size:12px;color:#7a7484}",
+    ".reset-btn{background:none;border:0;padding:0;font-size:12px;color:#6F23B0;font-weight:600;text-decoration:underline;cursor:pointer}",
+    ".powered{display:inline-flex;align-items:center;gap:5px;color:#7a7484;text-decoration:none;font-size:12px}",
+    ".powered img{height:16px;width:auto;display:block}",
+    ".powered b{color:#1DA851;font-weight:800;letter-spacing:-.02em}",
+    ".disclaimer{margin:-6px 0 0 42px;font-size:11.5px;color:#8a8494;line-height:1.4}",
     "@media (max-width:480px){.wrap{bottom:14px;" + CONFIG.position + ":14px}.panel.open{position:fixed;inset:0;width:100vw;height:100%;height:100dvh;max-height:none;border-radius:0}.chips{padding-left:0}textarea{font-size:16px}.panel.open~.launcher{display:none}.expand-btn{display:none}}",
     "@media (prefers-reduced-motion:reduce){.panel{animation:none}.typing span{animation:none}.log{scroll-behavior:auto}}",
   ].join("\n");
@@ -218,7 +224,7 @@
     '<section class="panel" role="dialog" aria-label="' + escapeAttr(CONFIG.botName) + ' chat">' +
     '<header class="head">' +
     '<div class="avatar">' + avatarHTML + "</div>" +
-    '<div class="titles"><p class="title"></p><div class="sub">ActivateMe® guide · Powered by AI</div></div>' +
+    '<div class="titles"><p class="title"></p><div class="sub">Your ActivateMe® Fest guide</div></div>' +
     '<button class="icon-btn expand-btn" type="button" aria-label="Expand chat" title="Expand">' + ICON.expand + "</button>" +
     '<button class="icon-btn close-btn" type="button" aria-label="Close chat" title="Close">' + ICON.close + "</button>" +
     "</header>" +
@@ -229,7 +235,8 @@
     '<textarea rows="1" maxlength="' + MAX_CHARS + '" placeholder="Ask Acti about the festival…" aria-label="Your question"></textarea>' +
     '<button class="send" type="submit" aria-label="Send">' + ICON.send + "</button>" +
     "</form>" +
-    '<div class="note">AI can make mistakes. Questions are saved anonymously to improve Acti. <button class="reset-btn" type="button">New chat</button></div></div>' +
+    '<div class="note"><button class="reset-btn" type="button">New chat</button>' +
+    '<a class="powered" href="https://utterchat.ai" target="_blank" rel="noopener">Powered by <img alt="Utter" src="' + escapeAttr(CONFIG.utterLogo) + '"></a></div></div>' +
     "</section>" +
     '<div class="teaser" role="button" tabindex="0"><span></span><button class="teaser-x" type="button" aria-label="Dismiss"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
     '<button class="launcher" type="button" aria-label="Chat with Acti, the ActivateMe® assistant">' + avatarHTML + "</button>" +
@@ -239,6 +246,8 @@
   var panel = $(".panel"), log = $(".log"), chips = document.createElement("div"), form = $(".compose");
   var input = $("textarea"), sendBtn = $(".send"), launcher = $(".launcher"), expandBtn = $(".expand-btn");
   $(".title").textContent = CONFIG.botName;
+  var logo = $(".powered img");
+  logo.addEventListener("error", function () { logo.replaceWith(Object.assign(document.createElement("b"), { textContent: "Utter" })); });
 
   // ---------- rendering ----------
   function escapeHTML(s) {
@@ -492,6 +501,10 @@
   function renderAll() {
     log.innerHTML = "";
     addBubble("bot", CONFIG.greeting);
+    var note = document.createElement("div");
+    note.className = "disclaimer";
+    note.textContent = "AI can make mistakes. Questions are saved anonymously to improve Acti.";
+    log.appendChild(note);
     state.history.forEach(function (m) {
       var r = addBubble(m.role, m.content);
       if (m.role === "assistant") addRating(r, m);
