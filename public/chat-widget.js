@@ -12,6 +12,8 @@
  *   data-open       "true" to open the panel on page load
  *   data-utter-widget-id  Utter (utterchat.ai) widget whose WhatsApp number, CTA buttons and #tags
  *                         power the "Chat with our team on WhatsApp" handoff (default: ActivateMe)
+ *   data-teaser     "false" to turn off the small "Questions?" speech bubble by the launcher
+ *   data-teaser-delay  Seconds before the speech bubble appears (default 6)
  */
 (function () {
   "use strict";
@@ -34,10 +36,42 @@
     position: attr("position", "right") === "left" ? "left" : "right",
     avatar: attr("avatar", scriptOrigin + "/acti.jpg"),
     openOnLoad: attr("open", "false") === "true",
+    teaser: attr("teaser", "true") !== "false",
+    teaserDelay: Math.max(0, Number(attr("teaser-delay", "6")) || 6) * 1000,
+  };
+
+  // Page-aware greeting, suggestions and speech bubble: matched on the page's URL path.
+  // Only suggest questions the knowledge base can answer. The first matching rule wins.
+  var PAGES = [
+    {
+      match: /booking/i,
+      teaser: "Need help with tickets?",
+      greeting: "Hi, I'm Acti! Need a hand with tickets? Ask me about prices, opening hours, refunds or anything else about the festival on 16–17 January 2027.",
+      suggestions: ["How much are tickets?", "What are the opening hours?", "Can I get a refund?", "I didn't get my ticket"],
+    },
+    {
+      match: /partner/i,
+      teaser: "Want to partner with us?",
+      greeting: "Hi, I'm Acti! Want to partner with ActivateMe® Fest? I can tell you about sponsorships, booths and community programs, or connect you with our partnerships team.",
+      suggestions: ["What partnership options are there?", "Can my brand have a booth?", "Who do I contact about sponsoring?", "Why partner with ActivateMe®?"],
+    },
+    {
+      match: /contact/i,
+      teaser: "Questions? I can help right now!",
+      greeting: "Hi, I'm Acti! I can answer most questions about the festival straight away, or connect you with our team on WhatsApp.",
+      suggestions: ["When and where is it?", "How do I contact the team?", "How much are tickets?", "How can my brand partner?"],
+    },
+  ];
+  var DEFAULT_PAGE = {
+    teaser: "Hi! Questions about the festival?",
     greeting:
       "Hi, I'm Acti, your ActivateMe® Fest guide! Ask me anything about the festival on 16–17 January 2027 — tickets, timings, activities, partnering, or MWAN Events.",
     suggestions: ["When and where is it?", "How much are tickets?", "What can kids do there?", "How can my brand partner?"],
   };
+  var page = DEFAULT_PAGE;
+  for (var pi = 0; pi < PAGES.length; pi++) if (PAGES[pi].match.test(location.pathname)) { page = PAGES[pi]; break; }
+  CONFIG.greeting = page.greeting;
+  CONFIG.suggestions = page.suggestions;
 
   var STORE_KEY = "activateme-chat-v1";
   var MAX_CHARS = 500;
@@ -100,6 +134,12 @@
     ".launcher{width:66px;height:66px;border-radius:50%;border:0;padding:3px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#EE6A1A,#6F23B0);box-shadow:0 8px 24px rgba(111,35,176,.35);display:grid;place-items:center;transition:transform .15s ease;overflow:hidden}",
     ".launcher img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;border:2px solid #fff}",
     ".launcher:hover{transform:scale(1.06)}",
+    ".teaser{display:none;align-items:center;gap:4px;max-width:240px;background:#fff;color:#1d1d24;border-radius:16px;padding:10px 6px 10px 14px;box-shadow:0 8px 24px rgba(20,10,40,.22);font-size:14px;font-weight:600;line-height:1.35;cursor:pointer;animation:pop .2s ease-out;border:1.5px solid #F3E6FA}",
+    ".teaser.show{display:flex}",
+    ".teaser span{flex:1}",
+    ".teaser-x{background:none;border:0;color:#7a7484;cursor:pointer;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex:none}",
+    ".teaser-x:hover{background:#F3F2F1}",
+    ".panel.open~.teaser{display:none}",
     ".launcher:focus-visible,button:focus-visible,textarea:focus-visible{outline:3px solid #EE6A1A;outline-offset:2px}",
     ".panel{width:380px;height:600px;max-height:calc(100vh - 110px);background:#fff;border-radius:18px;box-shadow:0 16px 48px rgba(20,10,40,.28);display:none;flex-direction:column;overflow:hidden;transform-origin:bottom " + CONFIG.position + ";animation:pop .18s ease-out}",
     ".panel.open{display:flex}",
@@ -180,6 +220,7 @@
     "</form>" +
     '<div class="note">AI answers can be wrong — check activatemefest.com. <button class="reset-btn" type="button">New chat</button></div></div>' +
     "</section>" +
+    '<div class="teaser" role="button" tabindex="0"><span></span><button class="teaser-x" type="button" aria-label="Dismiss"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
     '<button class="launcher" type="button" aria-label="Chat with Acti, the ActivateMe® assistant">' + avatarHTML + "</button>" +
     "</div>";
 
@@ -507,9 +548,35 @@
   renderAll();
   updateSend();
 
+  // ---------- speech bubble ("teaser") ----------
+  // Shown once per browser session, a few seconds after load, unless the visitor has already
+  // opened the chat or dismissed it.
+  var TEASER_KEY = "activateme-teaser-seen";
+  var teaser = $(".teaser");
+  teaser.querySelector("span").textContent = page.teaser;
+  function teaserSeen() {
+    try { return sessionStorage.getItem(TEASER_KEY) === "1"; } catch (e) { return false; }
+  }
+  function hideTeaser() {
+    teaser.classList.remove("show");
+    try { sessionStorage.setItem(TEASER_KEY, "1"); } catch (e) {}
+  }
+  teaser.addEventListener("click", function (e) {
+    if (e.target.closest(".teaser-x")) { hideTeaser(); return; }
+    hideTeaser();
+    setOpen(true);
+  });
+  teaser.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); hideTeaser(); setOpen(true); }
+  });
+  launcher.addEventListener("click", hideTeaser);
+
   function mount() {
     document.body.appendChild(host);
     if (CONFIG.openOnLoad) setOpen(true);
+    if (CONFIG.teaser && !CONFIG.openOnLoad && !teaserSeen() && !state.history.length) {
+      setTimeout(function () { if (!state.open && !teaserSeen()) teaser.classList.add("show"); }, CONFIG.teaserDelay);
+    }
   }
   if (document.body) mount();
   else document.addEventListener("DOMContentLoaded", mount);

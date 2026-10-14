@@ -65,6 +65,8 @@ Optional attributes on that tag:
 | `data-position` | `right` | `left` if it clashes with another widget |
 | `data-endpoint` | script host + `/chat` | Only needed if you put the API on a custom route |
 | `data-utter-widget-id` | `695222f369041029ef96ba3a` (ActivateMe) | Utter widget whose WhatsApp number, CTA buttons and #tags the handoff uses |
+| `data-teaser` | `true` | `false` turns off the small speech bubble next to the launcher |
+| `data-teaser-delay` | `6` | Seconds before the speech bubble appears (once per browser session) |
 
 The widget renders in a Shadow DOM, so the site's Bootstrap CSS can't break it and it can't
 break the site.
@@ -78,6 +80,22 @@ site template (it stays on mwanevents.com and mwanmobile.com):
 
 Visitors still reach the team on WhatsApp through Acti (see below), and conversations still
 arrive in Utter with the same #tags.
+
+## Page-aware greetings
+
+Acti changes its greeting, suggestion buttons and speech bubble to match the page it's on
+(the `PAGES` list near the top of `public/chat-widget.js`, matched on the URL path):
+
+| Page | Speech bubble | Suggestions |
+|---|---|---|
+| Booking (`/booking`) | "Need help with tickets?" | prices, opening hours, refunds, missing ticket |
+| Partner with us (`/partner…`) | "Want to partner with us?" | partnership options, booths, sponsorship contact, why partner |
+| Contact us (`/contact…`) | "Questions? I can help right now!" | dates, contacts, tickets, partnering |
+| Everything else | "Hi! Questions about the festival?" | the default four |
+
+The speech bubble appears 6 seconds after the page loads, once per browser session, and never
+again after the visitor opens the chat or closes the bubble. Changes here go live without
+touching the website: the site loads `chat-widget.js` from the worker on every page view.
 
 ## WhatsApp handoff (Utter)
 
