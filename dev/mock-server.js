@@ -54,6 +54,14 @@ createServer(async (req, res) => {
     return res.end(JSON.stringify(topic ? { reply: hit[1], handoff: true, topic } : { reply: hit[1], handoff: false }));
   }
 
+  if (url.pathname === "/feedback" && req.method === "POST") {
+    let raw = "";
+    for await (const chunk of req) raw += chunk;
+    console.log("feedback:", raw);
+    res.writeHead(200, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ ok: true }));
+  }
+
   if (url.pathname === "/handoff-config") {
     res.writeHead(200, { "content-type": "application/json" });
     return res.end(JSON.stringify(HANDOFF_CONFIG));
@@ -85,5 +93,5 @@ async function streamMock(res, message) {
     res.write(JSON.stringify({ d: word }) + "\n");
     await new Promise((r) => setTimeout(r, 40));
   }
-  res.end(JSON.stringify({ done: true, ...result, reply: result.reply.replace(" [HANDOFF]", "") }) + "\n");
+  res.end(JSON.stringify({ done: true, ...result, reply: result.reply.replace(" [HANDOFF]", ""), rid: crypto.randomUUID() }) + "\n");
 }

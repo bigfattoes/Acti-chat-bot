@@ -15,7 +15,7 @@
 //   3. Short replies, low temperature, and an exact refusal line for anything off-topic.
 
 import KNOWLEDGE from "../knowledge.md";
-import { logQuestion, logsPage } from "./logs.js";
+import { logQuestion, logsPage, teach, saveFeedback, taughtKnowledge } from "./logs.js";
 
 const MAX_MESSAGE_CHARS = 500;
 const MAX_HISTORY_TURNS = 6; // last 6 messages (3 back-and-forths)
@@ -100,6 +100,21 @@ export default {
     if (url.pathname === "/logs" || url.pathname === "/logs.csv") {
       return logsPage(request, env, url);
     }
+    if (url.pathname === "/logs/teach") {
+      return teach(request, env, url);
+    }
+
+    // 👍/👎 on an answer: { rid, rating: 1 | -1 }
+    if (url.pathname === "/feedback") {
+      if (request.method !== "POST") return json({ error: "Use POST" }, 405, cors);
+      if (!cors) return json({ error: "Origin not allowed" }, 403);
+      if (env.CHAT_LIMITER) {
+        const { success } = await env.CHAT_LIMITER.limit({ key: "fb:" + (request.headers.get("CF-Connecting-IP") || "unknown") });
+        if (!success) return json({ ok: false }, 429, cors);
+      }
+      const fb = await request.json().catch(() => null);
+      return json({ ok: await saveFeedback(env, fb) }, 200, cors);
+    }
 
     if (url.pathname === "/handoff-config") {
       if (request.method !== "GET") return json({ error: "Use GET" }, 405, cors);
@@ -136,8 +151,15 @@ export default {
       return json({ reply: `Please keep your question under ${MAX_MESSAGE_CHARS} characters.` }, 200, cors);
     }
 
+    // Answers the team added on /logs ("Teach Acti") count as part of the knowledge base.
+    const taught = await taughtKnowledge(env);
+    const system =
+      SYSTEM_PROMPT.replace("{{TODAY}}", new Date().toISOString().slice(0, 10)) +
+      (taught
+        ? `\n\nEXTRA ANSWERS from the ActivateMe® team (part of the KNOWLEDGE BASE; if they conflict with anything above, these are correct):\n\"\"\"\n${taught}\n\"\"\"`
+        : "");
     const messages = [
-      { role: "system", content: SYSTEM_PROMPT.replace("{{TODAY}}", new Date().toISOString().slice(0, 10)) },
+      { role: "system", content: system },
       ...cleanHistory(body.history),
       { role: "user", content: wrapVisitorMessage(message) },
     ];
@@ -145,8 +167,10 @@ export default {
     // Anonymous question log (see src/logs.js); runs after the reply, never slows it down.
     const site = (() => { try { return new URL(request.headers.get("Origin") || "").host; } catch { return ""; } })();
     const page = typeof body.page === "string" ? body.page : "";
+    const rid = env.DB ? crypto.randomUUID() : null; // lets the visitor rate this answer
     const finish = (raw) => {
       const result = parseReply(raw);
+      if (rid) result.rid = rid;
       const topic = result.refused ? null : detectTopic(message);
       if (topic) Object.assign(result, { handoff: true, topic });
       ctx?.waitUntil(logQuestion(env, { site, page, question: message, result }));
@@ -163,7 +187,7 @@ export default {
     } catch (err) {
       // Most common cause: the free daily quota is used up. Fail politely, never with a stack trace.
       console.error("AI call failed:", err?.message || err);
-      const result = { reply: FALLBACK, handoff: true };
+      const result = { reply: FALLBACK, handoff: true, ...(rid && { rid }) };
       ctx?.waitUntil(logQuestion(env, { site, page, question: message, result }));
       return json(result, 200, cors);
     }
