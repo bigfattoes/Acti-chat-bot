@@ -88,10 +88,10 @@ Acti changes its greeting, suggestion buttons and speech bubble to match the pag
 
 | Page | Speech bubble | Suggestions |
 |---|---|---|
-| Booking (`/booking`) | "Need help with tickets?" | prices, opening hours, refunds, missing ticket |
-| Partner with us (`/partner…`) | "Want to partner with us?" | partnership options, booths, sponsorship contact, why partner |
-| Contact us (`/contact…`) | "Questions? I can help right now!" | dates, contacts, tickets, partnering |
-| Everything else | "Hi! Questions about the festival?" | the default four |
+| Booking (`/booking`) | "Ticket help" | prices, opening hours, refunds, missing ticket |
+| Partner with us (`/partner…`) | "Partner with us" | partnership options, booths, sponsorship contact, why partner |
+| Contact us (`/contact…`) | "Ask Acti" | dates, contacts, tickets, partnering |
+| Everything else | "Festival info" | the default four |
 
 The speech bubble appears 1.5 seconds after every page view, including in-site page changes
 (the site switches pages without a full reload, so Acti watches the URL). Closing it hides it

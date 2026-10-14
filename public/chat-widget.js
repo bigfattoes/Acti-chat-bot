@@ -48,25 +48,25 @@
   var PAGES = [
     {
       match: /booking/i,
-      teaser: "Need help with tickets?",
+      teaser: "Ticket help",
       greeting: "Hi, I'm Acti! Need a hand with tickets? Ask me about prices, opening hours, refunds or anything else about the festival on 16–17 January 2027.",
       suggestions: ["How much are tickets?", "What are the opening hours?", "Can I get a refund?", "I didn't get my ticket"],
     },
     {
       match: /partner/i,
-      teaser: "Want to partner with us?",
+      teaser: "Partner with us",
       greeting: "Hi, I'm Acti! Want to partner with ActivateMe® Fest? I can tell you about sponsorships, booths and community programs, or connect you with our partnerships team.",
       suggestions: ["What partnership options are there?", "Can my brand have a booth?", "Who do I contact about sponsoring?", "Why partner with ActivateMe®?"],
     },
     {
       match: /contact/i,
-      teaser: "Questions? I can help right now!",
+      teaser: "Ask Acti",
       greeting: "Hi, I'm Acti! I can answer most questions about the festival straight away, or connect you with our team on WhatsApp.",
       suggestions: ["When and where is it?", "How do I contact the team?", "How much are tickets?", "How can my brand partner?"],
     },
   ];
   var DEFAULT_PAGE = {
-    teaser: "Hi! Questions about the festival?",
+    teaser: "Festival info",
     greeting:
       "Hi, I'm Acti, your ActivateMe® Fest guide! Ask me anything about the festival on 16–17 January 2027 — tickets, timings, activities, partnering, or MWAN Events.",
     suggestions: ["When and where is it?", "How much are tickets?", "What can kids do there?", "How can my brand partner?"],
@@ -143,11 +143,16 @@
     ".launcher{width:66px;height:66px;border-radius:50%;border:0;padding:3px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#EE6A1A,#6F23B0);box-shadow:0 8px 24px rgba(111,35,176,.35);display:grid;place-items:center;transition:transform .15s ease;overflow:hidden}",
     ".launcher img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;border:2px solid #fff}",
     ".launcher:hover{transform:scale(1.06)}",
-    ".teaser{display:none;align-items:center;gap:4px;max-width:240px;background:#fff;color:#1d1d24;border-radius:16px;padding:10px 6px 10px 14px;box-shadow:0 8px 24px rgba(20,10,40,.22);font-size:14px;font-weight:600;line-height:1.35;cursor:pointer;animation:pop .2s ease-out;border:1.5px solid #F3E6FA}",
-    ".teaser.show{display:flex}",
-    ".teaser span{flex:1}",
-    ".teaser-x{background:none;border:0;color:#7a7484;cursor:pointer;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex:none}",
-    ".teaser-x:hover{background:#F3F2F1}",
+    ".teaser{position:relative;display:none;align-items:center;gap:8px;background:linear-gradient(120deg,#EE6A1A 0%,#D94A6A 55%,#6F23B0 120%);color:#fff;border-radius:999px;padding:11px 8px 11px 16px;box-shadow:0 10px 26px rgba(238,106,26,.38);font-size:16px;font-weight:800;line-height:1;white-space:nowrap;cursor:pointer;animation:pop .25s ease-out,nudge 4s ease-in-out 1.2s infinite;" + (CONFIG.position === "left" ? "margin-left:6px" : "margin-right:6px") + "}",
+    ".teaser:after{content:'';position:absolute;bottom:-6px;" + CONFIG.position + ":26px;width:14px;height:14px;background:#A33A8C;transform:rotate(45deg);border-radius:3px;z-index:-1}",
+    ".teaser.show{display:inline-flex}",
+    ".teaser svg.chat{flex:none}",
+    ".teaser:hover{filter:brightness(1.06)}",
+    ".teaser-x{background:rgba(255,255,255,.22);border:0;color:#fff;cursor:pointer;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none}",
+    ".teaser-x:hover{background:rgba(255,255,255,.38)}",
+    "@keyframes nudge{0%,86%,100%{transform:translateY(0)}90%{transform:translateY(-5px)}94%{transform:translateY(0)}97%{transform:translateY(-2px)}}",
+    ".launcher.attn{animation:ring 2.4s ease-out infinite}",
+    "@keyframes ring{0%{box-shadow:0 8px 24px rgba(111,35,176,.35),0 0 0 0 rgba(238,106,26,.55)}70%{box-shadow:0 8px 24px rgba(111,35,176,.35),0 0 0 14px rgba(238,106,26,0)}100%{box-shadow:0 8px 24px rgba(111,35,176,.35),0 0 0 0 rgba(238,106,26,0)}}",
     ".panel.open~.teaser{display:none}",
     ".launcher:focus-visible,button:focus-visible,textarea:focus-visible{outline:3px solid #EE6A1A;outline-offset:2px}",
     ".panel{width:380px;height:600px;max-height:calc(100vh - 110px);background:#fff;border-radius:18px;box-shadow:0 16px 48px rgba(20,10,40,.28);display:none;flex-direction:column;overflow:hidden;transform-origin:bottom " + CONFIG.position + ";animation:pop .18s ease-out}",
@@ -209,7 +214,7 @@
     ".powered b{color:#1DA851;font-weight:800;letter-spacing:-.02em}",
     ".disclaimer{margin:-6px 0 0 42px;font-size:11.5px;color:#8a8494;line-height:1.4}",
     "@media (max-width:480px){.wrap{bottom:14px;" + CONFIG.position + ":14px}.panel.open{position:fixed;inset:0;width:100vw;height:100%;height:100dvh;max-height:none;border-radius:0}.chips{padding-left:0}textarea{font-size:16px}.panel.open~.launcher{display:none}.expand-btn{display:none}}",
-    "@media (prefers-reduced-motion:reduce){.panel{animation:none}.typing span{animation:none}.log{scroll-behavior:auto}}",
+    "@media (prefers-reduced-motion:reduce){.panel,.teaser,.launcher.attn{animation:none}.typing span{animation:none}.log{scroll-behavior:auto}}",
   ].join("\n");
 
   // ---------- DOM ----------
@@ -238,7 +243,7 @@
     '<div class="note"><button class="reset-btn" type="button">New chat</button>' +
     '<a class="powered" href="https://utterchat.ai" target="_blank" rel="noopener">Powered by <img alt="Utter" src="' + escapeAttr(CONFIG.utterLogo) + '"></a></div></div>' +
     "</section>" +
-    '<div class="teaser" role="button" tabindex="0"><span></span><button class="teaser-x" type="button" aria-label="Dismiss"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
+    '<div class="teaser" role="button" tabindex="0"><svg class="chat" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 6.5a1.5 1.5 0 1 0 0 .01zm5 0a1.5 1.5 0 1 0 0 .01zm5 0a1.5 1.5 0 1 0 0 .01z"/></svg><span></span><button class="teaser-x" type="button" aria-label="Dismiss"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
     '<button class="launcher" type="button" aria-label="Chat with Acti, the ActivateMe® assistant">' + avatarHTML + "</button>" +
     "</div>";
 
@@ -710,12 +715,17 @@
   function hideTeaser() {
     clearTimeout(teaserTimer);
     teaser.classList.remove("show");
+    launcher.classList.remove("attn");
   }
   function scheduleTeaser() {
     hideTeaser();
     if (!CONFIG.teaser) return;
     teaser.querySelector("span").textContent = page.teaser;
-    teaserTimer = setTimeout(function () { if (!state.open) teaser.classList.add("show"); }, CONFIG.teaserDelay);
+    teaserTimer = setTimeout(function () {
+      if (state.open) return;
+      teaser.classList.add("show");
+      launcher.classList.add("attn"); // soft pulse around Acti while the bubble is showing
+    }, CONFIG.teaserDelay);
   }
   teaser.addEventListener("click", function (e) {
     hideTeaser();
