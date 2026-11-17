@@ -82,7 +82,7 @@ activatemefest.com, mwanevents.com and mwanmobile.com.
   - Live ActivateMe example text: `Hello Support Team,\nI would like to know:How do I register\n#general`
 - **Widget IDs:**
   - **ActivateMe:** `695222f369041029ef96ba3a`
-    - Phone: 971524586156
+    - Phone: 971524586156 in Utter; Acti forces 971524515726 via `WHATSAPP_NUMBER`
     - Header: "Welcome To ActivateMe® Support!"
     - CTAs: How do I register `#general` · Become our Ambassador `#Speaker` · Become our Partner `#partner` · Anything else `#general`
   - **mwanevents.com:** `66d9a6743280355ad15f0f23` (phone 971523532522)
@@ -136,6 +136,6 @@ activatemefest.com, mwanevents.com and mwanmobile.com.
 - **Commits:** ask Aseel which author name and email to use before committing.
 - **Contacts:** Svetlana Efimova (CEO / Festival Director) svetlana@mwanevents.com ·
   Andreas Tsindos (CDO) andreas.tsindos@mwanmobile.com · general: info@mwanevents.com,
-  WhatsApp +971 52 458 6156.
+  WhatsApp +971 52 451 5726.
 - **Question log:** `src/logs.js` saves anonymous questions to D1 (`DB`) and serves `/logs`
   (password secret `LOGS_PASSWORD`, set by Aseel in the dashboard; never ask for it in chat).

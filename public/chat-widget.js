@@ -85,7 +85,7 @@
 
   // Used until (or if) the worker's /handoff-config answers. Mirrors Utter's ActivateMe setup.
   var DEFAULT_HANDOFF = {
-    phone: "971524586156",
+    phone: "971524515726",
     ctas: [
       { text: "How do I register", tag: "general" },
       { text: "Become our Ambassador", tag: "Speaker" },

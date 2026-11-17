@@ -24,7 +24,7 @@ const CANNED = [
 const UNKNOWN = [/line-?up|confirmed|ajax|wheelchair|lost|talk to|human|person|team|whatsapp/i,
   "I don't have that detail yet. Our team can help you on WhatsApp or at info@mwanevents.com."];
 const HANDOFF_CONFIG = {
-  phone: "971524586156",
+  phone: "971524515726",
   title: "Welcome To ActivateMe® Support!",
   ctas: [
     { text: "How do I register", tag: "general" },

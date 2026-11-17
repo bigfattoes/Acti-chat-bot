@@ -36,7 +36,7 @@ const UTTER_CACHE_SECONDS = 3600;
 const ACTIVATEME_UTTER_ID = "695222f369041029ef96ba3a";
 const DEFAULT_HANDOFF = {
   [ACTIVATEME_UTTER_ID]: {
-    phone: "971524586156",
+    phone: "971524515726",
     title: "Welcome To ActivateMe® Support!",
     ctas: [
       { text: "How do I register", tag: "general" },
@@ -60,7 +60,7 @@ const SLOW_DOWN = "You're sending messages a bit fast. Please wait a minute and 
 
 const FALLBACK =
   "I'm having trouble answering right now. You can reach the team on WhatsApp at " +
-  "+971 52 458 6156 or email info@mwanevents.com.";
+  "+971 52 451 5726 or email info@mwanevents.com.";
 
 const SYSTEM_PROMPT = `You are Acti, the friendly mascot and official website assistant for ActivateMe® Fest, a family festival in Dubai organised by MWAN Events. Acti is a cheerful orange character in an ActivateMe® cap who loves sport, music and play. If asked who you are, say you're Acti, the ActivateMe® Fest mascot.
 
@@ -246,7 +246,7 @@ async function handoffConfig(url, env, cors) {
   const cache = caches.default;
   const cacheKey = new Request(`https://handoff-config.cache/${id}`);
   const hit = await cache.match(cacheKey);
-  if (hit) return json(await hit.json(), 200, { ...cors, "Cache-Control": "public, max-age=300" });
+  if (hit) return json(withNumber(await hit.json(), env), 200, { ...cors, "Cache-Control": "public, max-age=300" });
 
   let config = null;
   try {
@@ -265,7 +265,14 @@ async function handoffConfig(url, env, cors) {
     // Utter down or changed shape: fall back to the last known ActivateMe setup (not cached, so we retry).
     config = { ...(DEFAULT_HANDOFF[id] || DEFAULT_HANDOFF[ACTIVATEME_UTTER_ID]), source: "default" };
   }
-  return json(config, 200, { ...cors, "Cache-Control": "public, max-age=300" });
+  return json(withNumber(config, env), 200, { ...cors, "Cache-Control": "public, max-age=300" });
+}
+
+// WHATSAPP_NUMBER (wrangler.toml) forces the number Acti hands off to, whatever Utter's settings say.
+function withNumber(config, env) {
+  const forced = digits(env.WHATSAPP_NUMBER);
+  if (!forced) return config;
+  return { ...config, phone: forced, ctas: (config.ctas || []).map(({ phone, ...c }) => c) };
 }
 
 function normaliseUtter(body) {

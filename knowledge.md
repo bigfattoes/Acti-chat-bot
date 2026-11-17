@@ -44,7 +44,7 @@
   (Full cancellation policy is linked in the website footer.)
 - **Ticket not received?** Check your junk/spam folder first. At busy times, confirmation can
   take up to 24 hours. If it still hasn't arrived after 24 hours, contact the team
-  (info@mwanevents.com or WhatsApp +971 52 458 6156).
+  (info@mwanevents.com or WhatsApp +971 52 451 5726).
 - If someone asks about ticket types, family bundles, group rates or discounts: this knowledge
   base does not list them — send them to the booking page or the team.
 
@@ -145,7 +145,7 @@ email.
 
 - **General email:** info@mwanevents.com
 - **Phone:** +971 4 246 2840
-- **WhatsApp support:** +971 52 458 6156 (https://api.whatsapp.com/send?phone=971524586156)
+- **WhatsApp support:** +971 52 451 5726 (https://api.whatsapp.com/send?phone=971524515726)
 - **Contact form:** https://www.activatemefest.com/activate-me-festival/contact_us
 - **Instagram:** https://www.instagram.com/activatemefest
 - **LinkedIn:** https://www.linkedin.com/company/activateme-fest
