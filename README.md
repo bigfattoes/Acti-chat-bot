@@ -245,7 +245,7 @@ rules in the dashboard only apply to your own domains, not `workers.dev`.)
 - [ ] A festival question it can't know (e.g. "Is Ajax Academy confirmed for 2027?") → "don't have
       that detail" + contact info, with no made-up answer
 - [ ] That "can't know" question also shows the WhatsApp topic buttons; each opens WhatsApp with
-      the question pre-filled and the right #tag (#general, #Speaker, #partner)
+      the question pre-filled and the right #tag (#general, #ambassador, #partner)
 - [ ] The off-topic questions above don't show the WhatsApp buttons
 - [ ] `/handoff-config` returns `"source": "utter"` (otherwise it's using the fallback defaults)
 - [ ] On a phone, the chat opens full-screen and the close button works

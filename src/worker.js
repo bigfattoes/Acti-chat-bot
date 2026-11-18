@@ -40,7 +40,7 @@ const DEFAULT_HANDOFF = {
     title: "Welcome To ActivateMe® Support!",
     ctas: [
       { text: "How do I register", tag: "general" },
-      { text: "Become our Ambassador", tag: "Speaker" },
+      { text: "Become our Ambassador", tag: "ambassador" },
       { text: "Become our Partner", tag: "partner" },
       { text: "Anything else", tag: "general" },
     ],
@@ -268,11 +268,24 @@ async function handoffConfig(url, env, cors) {
   return json(withNumber(config, env), 200, { ...cors, "Cache-Control": "public, max-age=300" });
 }
 
-// WHATSAPP_NUMBER (wrangler.toml) forces the number Acti hands off to, whatever Utter's settings say.
+// Overrides on top of Utter's settings (wrangler.toml):
+//   WHATSAPP_NUMBER  forces the number Acti hands off to
+//   TAG_OVERRIDES    renames #tags, e.g. "Speaker:ambassador" sends #ambassador instead of #Speaker
 function withNumber(config, env) {
   const forced = digits(env.WHATSAPP_NUMBER);
-  if (!forced) return config;
-  return { ...config, phone: forced, ctas: (config.ctas || []).map(({ phone, ...c }) => c) };
+  const tags = Object.fromEntries(
+    String(env.TAG_OVERRIDES || "")
+      .split(",")
+      .map((p) => p.split(":").map((s) => cleanTag(s.trim())))
+      .filter(([from, to]) => from && to)
+      .map(([from, to]) => [from.toLowerCase(), to])
+  );
+  const ctas = (config.ctas || []).map(({ phone, ...c }) => ({
+    ...c,
+    ...(forced ? {} : phone ? { phone } : {}),
+    tag: tags[String(c.tag || "").toLowerCase()] || c.tag,
+  }));
+  return { ...config, ...(forced ? { phone: forced } : {}), ctas };
 }
 
 function normaliseUtter(body) {
@@ -351,7 +364,10 @@ function streamReply(env, messages, finish, cors) {
           const data = line.slice(5).trim();
           if (!data || data === "[DONE]") continue;
           try {
-            const piece = JSON.parse(data).response;
+            // Workers AI sometimes sends digit-only tokens (e.g. "246") as JSON numbers, not
+            // strings. Keep them, or phone numbers and dates come out with digits missing.
+            const raw = JSON.parse(data).response;
+            const piece = typeof raw === "number" ? String(raw) : raw;
             if (typeof piece === "string" && piece) {
               full += piece;
               await send({ d: piece });
