@@ -88,7 +88,7 @@
     phone: "971524515726",
     ctas: [
       { text: "How do I register", tag: "general" },
-      { text: "Become our Ambassador", tag: "Speaker" },
+      { text: "Become our Ambassador", tag: "ambassador" },
       { text: "Become our Partner", tag: "partner" },
       { text: "Anything else", tag: "general" },
     ],
